@@ -2,8 +2,9 @@ package net.firstwemine1.indicatorbars.render;
 
 import java.util.Locale;
 
-import net.firstwemine1.indicatorbars.core.BarStyle;
-import net.firstwemine1.indicatorbars.core.IBConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
+import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -39,10 +40,7 @@ public final class TargetPanelRenderer {
 	private static final int BAR_HEIGHT = 5;
 	private static final int HEIGHT = PORTRAIT + 2 * PADDING;
 
-	private static final int BACKGROUND = 0xB0101010;
-	private static final int FRAME = 0xFF606060;
 	private static final int PORTRAIT_BACKGROUND = 0x60000000;
-	private static final int TEXT = 0xFFFFFFFF;
 
 	/** Turns the portrait to a three-quarter view. */
 	private static final float PORTRAIT_YAW = 30;
@@ -51,24 +49,19 @@ public final class TargetPanelRenderer {
 	private TargetPanelRenderer() {
 	}
 
-	public static void extract(GuiGraphicsExtractor graphics, LivingEntity target, float alpha, float partialTick, IBConfig config) {
+	public static void extract(GuiGraphicsExtractor graphics, LivingEntity target, float alpha, float partialTick, HealthConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Font font = minecraft.font;
 		Component name = target.getDisplayName();
 		int textWidth = Math.max(MIN_TEXT_WIDTH, font.width(name));
 		int width = PADDING + PORTRAIT + PADDING + textWidth + PADDING;
-		int x = switch (config.panelAnchor) {
-			case TOP_LEFT, BOTTOM_LEFT -> config.panelX;
-			case TOP_CENTER -> (graphics.guiWidth() - width) / 2 + config.panelX;
-			case TOP_RIGHT, BOTTOM_RIGHT -> graphics.guiWidth() - width - config.panelX;
-		};
-		int y = switch (config.panelAnchor) {
-			case TOP_LEFT, TOP_CENTER, TOP_RIGHT -> config.panelY;
-			case BOTTOM_LEFT, BOTTOM_RIGHT -> graphics.guiHeight() - HEIGHT - config.panelY;
-		};
+		int[] corner = config.panelAnchor.place(graphics.guiWidth(), graphics.guiHeight(), width, HEIGHT,
+				config.panelX, config.panelY, true, true);
+		int x = corner[0];
+		int y = corner[1];
 
-		graphics.fill(x, y, x + width, y + HEIGHT, ARGB.multiplyAlpha(BACKGROUND, alpha));
-		graphics.outline(x, y, width, HEIGHT, ARGB.multiplyAlpha(FRAME, alpha));
+		graphics.fill(x, y, x + width, y + HEIGHT, ARGB.multiplyAlpha(MeterStyle.PANEL, alpha));
+		graphics.outline(x, y, width, HEIGHT, ARGB.multiplyAlpha(MeterStyle.FRAME, alpha));
 
 		int portraitX = x + PADDING;
 		int portraitY = y + PADDING;
@@ -79,7 +72,7 @@ public final class TargetPanelRenderer {
 		}
 
 		int textX = portraitX + PORTRAIT + PADDING;
-		int text = ARGB.multiplyAlpha(TEXT, alpha);
+		int text = ARGB.multiplyAlpha(MeterStyle.TEXT, alpha);
 		graphics.text(font, name, textX, y + PADDING, text);
 
 		float health = Math.max(target.getHealth(), 0);
@@ -91,13 +84,13 @@ public final class TargetPanelRenderer {
 			graphics.text(font, healthText, textX + HEART_SIZE + 2, rowY, text);
 		}
 
-		float fraction = BarStyle.fraction(health, maxHealth);
+		float fraction = MeterStyle.fraction(health, maxHealth);
 		int barY = y + HEIGHT - PADDING - BAR_HEIGHT;
 		int barRight = x + width - PADDING;
 		int filled = textX + Math.round((barRight - textX) * fraction);
-		graphics.fill(textX, barY, barRight, barY + BAR_HEIGHT, ARGB.multiplyAlpha(BarStyle.MISSING, alpha));
+		graphics.fill(textX, barY, barRight, barY + BAR_HEIGHT, ARGB.multiplyAlpha(MeterStyle.MISSING, alpha));
 		graphics.fill(textX, barY, filled, barY + BAR_HEIGHT,
-				ARGB.multiplyAlpha(BarStyle.fillColor(target, fraction, config.barColor), alpha));
+				ARGB.multiplyAlpha(HealthColors.fill(target, fraction, config.barColor), alpha));
 	}
 
 	/**
@@ -133,10 +126,10 @@ public final class TargetPanelRenderer {
 		graphics.entity(state, fit.scale(), fit.translation(), rotation, pitch, x0, y0, x1, y1);
 	}
 
-	private static String healthText(float health, float maxHealth, IBConfig.HealthText mode) {
+	private static String healthText(float health, float maxHealth, HealthConfig.HealthText mode) {
 		return switch (mode) {
 			case FRACTION -> number(health) + "/" + number(maxHealth);
-			case PERCENT -> Math.round(BarStyle.fraction(health, maxHealth) * 100) + "%";
+			case PERCENT -> Math.round(MeterStyle.fraction(health, maxHealth) * 100) + "%";
 			case HEARTS -> number(health / 2) + "/" + number(maxHealth / 2);
 			case OFF -> null;
 		};

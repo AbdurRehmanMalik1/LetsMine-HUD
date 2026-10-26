@@ -1,8 +1,8 @@
 package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.indicatorbars.core.BarStyle;
-import net.firstwemine1.indicatorbars.core.IBConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
+import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -29,7 +29,7 @@ public final class WorldBarRenderer {
 	}
 
 	public static void submit(HealthBarState.Bar bar, LivingEntityRenderState state, PoseStack poseStack,
-			SubmitNodeCollector collector, CameraRenderState camera, IBConfig config) {
+			SubmitNodeCollector collector, CameraRenderState camera, HealthConfig config) {
 		poseStack.pushPose();
 		float lift = LIFT + (state.nameTag != null ? NAME_TAG_CLEARANCE : 0);
 		poseStack.translate(0, state.boundingBoxHeight + lift, 0);
@@ -41,7 +41,7 @@ public final class WorldBarRenderer {
 		Font.DisplayMode front = config.seeThrough ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
 		float left = -WIDTH / 2;
 		collector.submitTextBackground(poseStack, left - BORDER, -BORDER, -left + BORDER, HEIGHT + BORDER,
-				BarStyle.BACKGROUND, back, LightCoordsUtil.FULL_BRIGHT);
+				MeterStyle.BACKGROUND, back, LightCoordsUtil.FULL_BRIGHT);
 		if (bar.fraction > 0) {
 			collector.submitTextBackground(poseStack, left, 0, left + WIDTH * bar.fraction, HEIGHT,
 					bar.color, front, LightCoordsUtil.FULL_BRIGHT);
