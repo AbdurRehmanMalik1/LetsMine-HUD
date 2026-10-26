@@ -46,16 +46,18 @@ git worktree add "../ports/health-indicator-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/health-indicator-design.md` in the workspace.
 
-## Building and testing
+## Building and testing (this branch: NeoForge 26.3)
 
 ```
-./gradlew build                # jar in build/libs
-./gradlew runClient            # play
-./gradlew runClientGameTest    # flat world with cows, screenshots in build/run/clientGameTest/screenshots
+./gradlew build                          # jar in build/libs
+./gradlew runClient                      # play
+./gradlew runClient -PquickPlay="World"  # open run/client/saves/World straight away
 ```
 
-The game test rebuilds the reference image (a herd of cows, the one ahead hurt to 6/10) and takes a
-first-person and a third-person screenshot. Nothing is compared automatically: look at them.
+NeoForge has no client game test like Fabric's. To check by eye, copy the world the Fabric game test
+saves (`build/run/clientGameTest/saves/New World` on `main`) into `run/client/saves/` and open it with
+`-PquickPlay="New World"`. On a fresh run directory, set `onboardAccessibility:false` in
+`run/client/options.txt` first, or the first-launch screen blocks quick play.
 
 ## Licence
 

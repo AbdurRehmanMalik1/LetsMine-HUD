@@ -1,60 +1,71 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.147'
 }
 
-loom {
-	// Client-only mod: everything lives in one source set, and only the client run is useful.
-	runs {
-		client {
-			runDir "run/client"
-			programArgs "--username", "Player1"
-		}
-	}
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
 }
 
-fabricApi {
-	// In-game check: ./gradlew runClientGameTest opens a flat world, spawns cows and screenshots the
-	// bars and the panel into build/run/clientGameTest/screenshots. Source in src/gametest.
-	configureTests {
-		createSourceSet = true
-		modId = "healthindicator-test"
-		enableGameTests = false
-		eula = true
-	}
+version = "${minecraft_version}-${mod_version}"
+group = mod_group
+
+base {
+    archivesName = mod_id
 }
 
-dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+
+neoForge {
+    version = project.neo_version
+
+    // Client-only mod: no server run.
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run/client')
+            programArguments.addAll '--username', 'Player1'
+            // ./gradlew runClient -PquickPlay="New World" opens that world straight away.
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay')
+            }
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
 }
 
-processResources {
-	def version = project.version
-	inputs.property "version", version
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProperties = [
+            mod_id                   : mod_id,
+            version                  : version,
+            mod_name                 : mod_name,
+            mod_description          : mod_description,
+            mod_license              : mod_license,
+            author_name              : author_name,
+            minecraft_version_range  : minecraft_version_range,
+            neo_version              : neo_version,
+            neoforge_minecraft_side  : neoforge_minecraft_side,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into layout.buildDirectory.dir('generated/sources/modMetadata')
+}
 
-	filesMatching("fabric.mod.json") {
-		expand "version": version
-	}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.named('jar', Jar) {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${mod_id}" }
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
-}
-
-java {
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
-}
-
-jar {
-	def projectName = project.name
-	inputs.property "projectName", projectName
-
-	from("LICENSE") {
-		rename { "${it}_$projectName"}
-	}
+    options.encoding = 'UTF-8'
 }
