@@ -8,6 +8,7 @@ import net.firstwemine1.indicatorbars.core.BarStyle;
 import net.firstwemine1.indicatorbars.core.BarVisibility;
 import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.firstwemine1.indicatorbars.core.TargetTracker;
+import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.KeyMapping;
@@ -86,5 +87,6 @@ public final class ClientHooks {
 	/** Disconnected: forget the target. */
 	public static void reset() {
 		TARGET.reset();
+		PortraitFit.reset();
 	}
 }

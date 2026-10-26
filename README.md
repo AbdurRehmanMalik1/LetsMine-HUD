@@ -56,10 +56,12 @@ Gradle 8.6 can't run on Java 25: point `JAVA_HOME` at JDK 21 first (the mod itse
 ./gradlew runClient -PquickPlay="World"  # open run/client/saves/World straight away
 ```
 
-Forge has no client game test like Fabric's. `testing/hi_test` is a datapack that rebuilds the same
+Forge has no client game test like Fabric's. `testing/ib_test` is a datapack that rebuilds the same
 scene: copy it into a 1.20.1 world's `datapacks/` folder and open the world. The first time a player
 joins, it sets noon, faces them south and summons the cows (the one ahead at 6/10, a calf, "Daisy" at
-3/10). Take a screenshot with F2. On a fresh run directory, set `onboardAccessibility:false` in
+3/10). Take a screenshot with F2. With cheats on, `/function ib_test:portrait/<mob>` (`pig`, `pig_baby`,
+`cow`, `chicken`, `horse`, `sheep`, `spider`, `wolf`, `ghast`, `slime`) clears the area and puts that
+one mob in front of you, to check the panel's portrait fits it. On a fresh run directory, set `onboardAccessibility:false` in
 `run/client/options.txt` first, or the first-launch screen blocks quick play.
 
 ## Licence

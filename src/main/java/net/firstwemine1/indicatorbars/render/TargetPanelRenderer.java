@@ -48,8 +48,6 @@ public final class TargetPanelRenderer {
 	/** Turns the portrait to a three-quarter view. */
 	private static final float PORTRAIT_YAW = 30;
 	private static final float PORTRAIT_PITCH = -10;
-	/** Pixels per block, so tiny mobs (silverfish, endermites) don't fill the whole box. */
-	private static final float MAX_PORTRAIT_SCALE = 40;
 
 	/** True while the portrait draws, so its name tag can be hidden. */
 	private static boolean drawingPortrait;
@@ -121,28 +119,27 @@ public final class TargetPanelRenderer {
 	 * draws the live entity, so its rotations are set for the portrait and put back afterwards.
 	 */
 	private static void portrait(GuiGraphics graphics, LivingEntity target, int x0, int y0, int x1, int y1) {
-		float size = Math.max(target.getBbHeight(), target.getBbWidth());
-		int scale = Math.round(Math.min((x1 - x0) * 0.8f / size, MAX_PORTRAIT_SCALE));
 		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
 		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
-		// The entity is drawn standing on (x, y).
-		int x = (x0 + x1) / 2;
-		int y = (y0 + y1) / 2 + Math.round(target.getBbHeight() * scale / 2);
 
 		float bodyRot = target.yBodyRot;
 		float yRot = target.getYRot();
 		float xRot = target.getXRot();
 		float headRot = target.yHeadRot;
 		float headRotO = target.yHeadRotO;
+		int deathTime = target.deathTime;
 		target.yBodyRot = 180 + PORTRAIT_YAW;
 		target.setYRot(180 + PORTRAIT_YAW);
 		target.setXRot(0);
 		target.yHeadRot = target.getYRot();
 		target.yHeadRotO = target.getYRot();
+		// A dying mob keeps its red tint but doesn't fall over out of the box.
+		target.deathTime = 0;
 		drawingPortrait = true;
 		try {
+			PortraitFit.Fit fit = PortraitFit.fit(target, rotation, x0, y0, x1, y1);
 			graphics.enableScissor(x0, y0, x1, y1);
-			InventoryScreen.renderEntityInInventory(graphics, x, y, scale, rotation, pitch, target);
+			InventoryScreen.renderEntityInInventory(graphics, fit.x(), fit.y(), fit.scale(), rotation, pitch, target);
 			graphics.disableScissor();
 		} finally {
 			drawingPortrait = false;
@@ -151,6 +148,7 @@ public final class TargetPanelRenderer {
 			target.setXRot(xRot);
 			target.yHeadRot = headRot;
 			target.yHeadRotO = headRotO;
+			target.deathTime = deathTime;
 		}
 	}
 
