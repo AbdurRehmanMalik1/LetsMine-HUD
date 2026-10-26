@@ -1,5 +1,6 @@
-package net.firstwemine1.indicatorbars.core;
+package net.firstwemine1.indicatorbars.meter.health;
 
+import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -13,8 +14,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * The mob shown in the target panel: whatever the crosshair is on, out to {@link IBConfig#targetRange}
- * (vanilla's own pick only reaches about 3 blocks). Kept for {@link IBConfig#panelLingerSeconds} after
+ * The mob shown in the target panel: whatever the crosshair is on, out to {@link HealthConfig#targetRange}
+ * (vanilla's own pick only reaches about 3 blocks). Kept for {@link HealthConfig#panelLingerSeconds} after
  * you look away, then faded out.
  */
 public class TargetTracker {
@@ -29,12 +30,12 @@ public class TargetTracker {
 	}
 
 	/** 1 while the panel is fully shown, falling to 0 as it fades out. */
-	public float alpha(IBConfig config, float partialTick) {
+	public float alpha(HealthConfig config, float partialTick) {
 		float fading = ticksAway + partialTick - lingerTicks(config);
 		return Mth.clamp(1 - fading / FADE_TICKS, 0, 1);
 	}
 
-	public void tick(Minecraft minecraft, IBConfig config) {
+	public void tick(Minecraft minecraft, HealthConfig config) {
 		LivingEntity seen = pick(minecraft, config);
 		if (seen != null) {
 			target = seen;
@@ -53,11 +54,11 @@ public class TargetTracker {
 		ticksAway = 0;
 	}
 
-	private static int lingerTicks(IBConfig config) {
+	private static int lingerTicks(HealthConfig config) {
 		return (int) Math.round(config.panelLingerSeconds * 20);
 	}
 
-	private static @Nullable LivingEntity pick(Minecraft minecraft, IBConfig config) {
+	private static @Nullable LivingEntity pick(Minecraft minecraft, HealthConfig config) {
 		Entity camera = minecraft.getCameraEntity();
 		Player player = minecraft.player;
 		if (camera == null || player == null || minecraft.level == null) {
@@ -85,7 +86,7 @@ public class TargetTracker {
 		return hit != null ? (LivingEntity) hit.getEntity() : null;
 	}
 
-	private static boolean targetable(LivingEntity entity, Player player, IBConfig config) {
+	private static boolean targetable(LivingEntity entity, Player player, HealthConfig config) {
 		return entity != player && !entity.isInvisibleTo(player) && !config.isBlacklisted(entity.getType())
 				&& (config.showForPlayers || !(entity instanceof Player));
 	}

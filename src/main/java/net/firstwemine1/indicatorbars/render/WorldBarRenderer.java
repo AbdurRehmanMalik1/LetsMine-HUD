@@ -2,8 +2,8 @@ package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.firstwemine1.indicatorbars.core.BarStyle;
-import net.firstwemine1.indicatorbars.core.IBConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
+import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -35,7 +35,7 @@ public final class WorldBarRenderer {
 	}
 
 	/** Called with the pose stack at the mob's feet, right after vanilla renders it. */
-	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, IBConfig config) {
+	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, HealthConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		poseStack.pushPose();
 		float lift = LIFT + (nameTagShown(entity, minecraft) ? NAME_TAG_CLEARANCE : 0);
@@ -49,15 +49,15 @@ public final class WorldBarRenderer {
 		float left = -WIDTH / 2;
 		float right = WIDTH / 2;
 		float split = left + WIDTH * fraction;
-		quad(consumer, pose, left - BORDER, -BORDER, right + BORDER, 0, BarStyle.BACKGROUND);
-		quad(consumer, pose, left - BORDER, HEIGHT, right + BORDER, HEIGHT + BORDER, BarStyle.BACKGROUND);
-		quad(consumer, pose, left - BORDER, 0, left, HEIGHT, BarStyle.BACKGROUND);
-		quad(consumer, pose, right, 0, right + BORDER, HEIGHT, BarStyle.BACKGROUND);
+		quad(consumer, pose, left - BORDER, -BORDER, right + BORDER, 0, MeterStyle.BACKGROUND);
+		quad(consumer, pose, left - BORDER, HEIGHT, right + BORDER, HEIGHT + BORDER, MeterStyle.BACKGROUND);
+		quad(consumer, pose, left - BORDER, 0, left, HEIGHT, MeterStyle.BACKGROUND);
+		quad(consumer, pose, right, 0, right + BORDER, HEIGHT, MeterStyle.BACKGROUND);
 		if (fraction > 0) {
 			quad(consumer, pose, left, 0, split, HEIGHT, color);
 		}
 		if (fraction < 1) {
-			quad(consumer, pose, split, 0, right, HEIGHT, BarStyle.BACKGROUND);
+			quad(consumer, pose, split, 0, right, HEIGHT, MeterStyle.BACKGROUND);
 		}
 		poseStack.popPose();
 	}

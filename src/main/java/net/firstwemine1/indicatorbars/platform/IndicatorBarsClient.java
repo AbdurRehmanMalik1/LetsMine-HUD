@@ -3,8 +3,11 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.client.IItemDecorator;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.event.RegisterItemDecorationsEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.RenderLivingEvent;
@@ -15,17 +18,32 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
 
 /** Client setup: turns Forge events into {@link ClientHooks} calls. Bars use events, not mixins. */
 final class IndicatorBarsClient {
 	private IndicatorBarsClient() {
 	}
 
+	/** Forge decorates per item, so the durability number is registered on every item; it skips the rest. */
+	private static void registerSlotCounter(RegisterItemDecorationsEvent event) {
+		IItemDecorator counter = (graphics, font, stack, x, y) -> {
+			ClientHooks.renderSlot(graphics, font, stack, x, y);
+			return false;
+		};
+		for (Item item : ForgeRegistries.ITEMS) {
+			event.register(item, counter);
+		}
+	}
+
 	static void init(IEventBus modBus) {
 		ClientHooks.init(FMLPaths.CONFIGDIR.get());
 		modBus.addListener((RegisterKeyMappingsEvent event) -> event.register(ClientHooks.TOGGLE_BARS));
-		modBus.addListener((RegisterGuiOverlaysEvent event) -> event.registerAboveAll("target_panel",
-				(gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick)));
+		modBus.addListener((RegisterGuiOverlaysEvent event) -> {
+			event.registerAboveAll("target_panel", (gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick));
+			event.registerAboveAll("durability_hud", (gui, graphics, partialTick, width, height) -> ClientHooks.renderEquipmentHud(graphics, partialTick));
+		});
+		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 
 		IEventBus bus = MinecraftForge.EVENT_BUS;
 		bus.addListener((TickEvent.ClientTickEvent event) -> {

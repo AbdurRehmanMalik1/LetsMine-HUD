@@ -4,19 +4,25 @@ import java.nio.file.Path;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.indicatorbars.core.BarStyle;
-import net.firstwemine1.indicatorbars.core.BarVisibility;
-import net.firstwemine1.indicatorbars.core.IBConfig;
-import net.firstwemine1.indicatorbars.core.TargetTracker;
+import net.firstwemine1.indicatorbars.config.IBConfig;
+import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
+import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
+import net.firstwemine1.indicatorbars.meter.health.HealthColors;
+import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
+import net.firstwemine1.indicatorbars.render.EquipmentHudRenderer;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
+import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Everything the loader-specific code calls. Each loader's entrypoint only turns its own events into
@@ -28,6 +34,7 @@ public final class ClientHooks {
 			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
+	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
 	private static IBConfig config;
 	/**
 	 * True while the level renders. GUI entity previews (inventory, horse screen, our own portrait)
@@ -45,18 +52,19 @@ public final class ClientHooks {
 	/** End of every client tick. */
 	public static void tick(Minecraft minecraft) {
 		while (TOGGLE_BARS.consumeClick()) {
-			config.showBars = !config.showBars;
+			config.health.showBars = !config.health.showBars;
 			config.save();
 			if (minecraft.player != null) {
 				minecraft.player.displayClientMessage(Component.translatable(
-						config.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
+						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
 			}
 		}
 		if (minecraft.level == null) {
-			TARGET.reset();
+			reset();
 			return;
 		}
-		TARGET.tick(minecraft, config);
+		TARGET.tick(minecraft, config.health);
+		EQUIPMENT.tick(minecraft, config.durability);
 	}
 
 	public static void setRenderingLevel(boolean rendering) {
@@ -65,28 +73,40 @@ public final class ClientHooks {
 
 	/** A living entity was just rendered; the pose stack is at its feet. */
 	public static void renderBar(LivingEntity entity, PoseStack poseStack, MultiBufferSource buffers) {
-		if (!renderingLevel || !BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target())) {
+		if (!renderingLevel || !BarVisibility.shouldShow(entity, Minecraft.getInstance(), config.health, TARGET.target())) {
 			return;
 		}
-		float fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
-		int color = BarStyle.fillColor(entity, fraction, config.barColor);
-		WorldBarRenderer.render(entity, fraction, color, poseStack, buffers, config);
+		float fraction = MeterStyle.fraction(entity.getHealth(), entity.getMaxHealth());
+		int color = HealthColors.fill(entity, fraction, config.health.barColor);
+		WorldBarRenderer.render(entity, fraction, color, poseStack, buffers, config.health);
 	}
 
+	/** The mob health panel. */
 	public static void renderHud(GuiGraphics graphics, float partialTick) {
 		LivingEntity target = TARGET.target();
-		if (!config.showPanel || target == null) {
+		if (!config.health.showPanel || target == null) {
 			return;
 		}
-		float alpha = TARGET.alpha(config, partialTick);
+		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.render(graphics, target, alpha, config);
+			TargetPanelRenderer.render(graphics, target, alpha, config.health);
 		}
 	}
 
-	/** Disconnected: forget the target. */
+	/** The durability column. */
+	public static void renderEquipmentHud(GuiGraphics graphics, float partialTick) {
+		EquipmentHudRenderer.render(graphics, config.durability, partialTick);
+	}
+
+	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
+	public static void renderSlot(GuiGraphics graphics, Font font, ItemStack stack, int x, int y) {
+		SlotCounterRenderer.render(graphics, font, stack, x, y, config.durability);
+	}
+
+	/** Disconnected or left the world: forget the target and the equipment. */
 	public static void reset() {
 		TARGET.reset();
+		EQUIPMENT.reset();
 		PortraitFit.reset();
 	}
 }
