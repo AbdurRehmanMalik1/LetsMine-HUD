@@ -4,10 +4,11 @@ import java.nio.file.Path;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.indicatorbars.core.BarStyle;
-import net.firstwemine1.indicatorbars.core.BarVisibility;
-import net.firstwemine1.indicatorbars.core.IBConfig;
-import net.firstwemine1.indicatorbars.core.TargetTracker;
+import net.firstwemine1.indicatorbars.config.IBConfig;
+import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
+import net.firstwemine1.indicatorbars.meter.health.HealthColors;
+import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
 import net.firstwemine1.indicatorbars.render.HealthBarState;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.PortraitRenderer;
@@ -45,18 +46,18 @@ public final class ClientHooks {
 	/** End of every client tick. */
 	public static void tick(Minecraft minecraft) {
 		while (TOGGLE_BARS.consumeClick()) {
-			config.showBars = !config.showBars;
+			config.health.showBars = !config.health.showBars;
 			config.save();
 			if (minecraft.player != null) {
 				minecraft.player.sendOverlayMessage(Component.translatable(
-						config.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"));
+						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"));
 			}
 		}
 		if (minecraft.level == null) {
 			TARGET.reset();
 			return;
 		}
-		TARGET.tick(minecraft, config);
+		TARGET.tick(minecraft, config.health);
 	}
 
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
@@ -64,10 +65,10 @@ public final class ClientHooks {
 		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
 		bar.target = entity == TARGET.target();
 		bar.entityId = entity.getId();
-		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target());
+		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config.health, TARGET.target());
 		if (bar.visible) {
-			bar.fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
-			bar.color = BarStyle.fillColor(entity, bar.fraction, config.barColor);
+			bar.fraction = MeterStyle.fraction(entity.getHealth(), entity.getMaxHealth());
+			bar.color = HealthColors.fill(entity, bar.fraction, config.health.barColor);
 		}
 	}
 
@@ -83,19 +84,19 @@ public final class ClientHooks {
 			PortraitFit.capture(renderer, bar.entityId);
 		}
 		if (bar.visible) {
-			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config);
+			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config.health);
 		}
 	}
 
 	public static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		LivingEntity target = TARGET.target();
-		if (!config.showPanel || target == null) {
+		if (!config.health.showPanel || target == null) {
 			return;
 		}
 		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
-		float alpha = TARGET.alpha(config, partialTick);
+		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.extract(graphics, target, alpha, partialTick, config);
+			TargetPanelRenderer.extract(graphics, target, alpha, partialTick, config.health);
 		}
 	}
 

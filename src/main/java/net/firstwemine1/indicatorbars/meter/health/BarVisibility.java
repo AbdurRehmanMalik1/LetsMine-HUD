@@ -1,5 +1,6 @@
-package net.firstwemine1.indicatorbars.core;
+package net.firstwemine1.indicatorbars.meter.health;
 
+import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -11,7 +12,7 @@ public final class BarVisibility {
 	private BarVisibility() {
 	}
 
-	public static boolean shouldShow(LivingEntity entity, Minecraft minecraft, IBConfig config, @Nullable LivingEntity target) {
+	public static boolean shouldShow(LivingEntity entity, Minecraft minecraft, HealthConfig config, @Nullable LivingEntity target) {
 		Player player = minecraft.player;
 		Entity camera = minecraft.getCameraEntity();
 		if (!config.showBars || player == null || camera == null) {
