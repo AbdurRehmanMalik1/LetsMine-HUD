@@ -9,6 +9,8 @@ import net.firstwemine1.indicatorbars.core.BarVisibility;
 import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.firstwemine1.indicatorbars.core.TargetTracker;
 import net.firstwemine1.indicatorbars.render.HealthBarState;
+import net.firstwemine1.indicatorbars.render.PortraitFit;
+import net.firstwemine1.indicatorbars.render.PortraitRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.DeltaTracker;
@@ -60,6 +62,8 @@ public final class ClientHooks {
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
 	public static void extractBar(LivingEntity entity, LivingEntityRenderState state) {
 		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
+		bar.target = entity == TARGET.target();
+		bar.entityId = entity.getId();
 		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target());
 		if (bar.visible) {
 			bar.fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
@@ -68,10 +72,17 @@ public final class ClientHooks {
 	}
 
 	/** A living entity was submitted for drawing; the pose stack is at its feet. */
-	public static void submitBar(LivingEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
+	public static void submitBar(PortraitRenderer renderer, LivingEntityRenderState state, PoseStack poseStack,
+			SubmitNodeCollector collector, CameraRenderState camera) {
 		// GUI previews (inventory, horse screen, our own portrait) draw with a camera that was never set up.
-		if (bar.visible && camera.initialized) {
+		if (!camera.initialized) {
+			return;
+		}
+		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
+		if (bar.target) {
+			PortraitFit.capture(renderer, bar.entityId);
+		}
+		if (bar.visible) {
 			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config);
 		}
 	}
@@ -91,5 +102,6 @@ public final class ClientHooks {
 	/** Disconnected: forget the target. */
 	public static void reset() {
 		TARGET.reset();
+		PortraitFit.reset();
 	}
 }
