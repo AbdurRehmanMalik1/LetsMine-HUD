@@ -1,14 +1,14 @@
-package net.firstwemine1.healthindicator;
+package net.firstwemine1.indicatorbars;
 
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class HealthIndicator {
-	public static final String MOD_ID = "healthindicator";
+public final class IndicatorBars {
+	public static final String MOD_ID = "indicatorbars";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	private HealthIndicator() {
+	private IndicatorBars() {
 	}
 
 	public static ResourceLocation id(String path) {

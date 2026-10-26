@@ -1,7 +1,7 @@
-package net.firstwemine1.healthindicator.platform;
+package net.firstwemine1.indicatorbars.platform;
 
-import net.firstwemine1.healthindicator.ClientHooks;
-import net.firstwemine1.healthindicator.render.TargetPanelRenderer;
+import net.firstwemine1.indicatorbars.ClientHooks;
+import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
@@ -17,8 +17,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
 
 /** Client setup: turns Forge events into {@link ClientHooks} calls. Bars use events, not mixins. */
-final class HealthIndicatorClient {
-	private HealthIndicatorClient() {
+final class IndicatorBarsClient {
+	private IndicatorBarsClient() {
 	}
 
 	static void init(IEventBus modBus) {

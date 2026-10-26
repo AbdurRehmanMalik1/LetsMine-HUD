@@ -1,4 +1,4 @@
-package net.firstwemine1.healthindicator.core;
+package net.firstwemine1.indicatorbars.core;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -14,16 +14,16 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
-import net.firstwemine1.healthindicator.HealthIndicator;
+import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 
 /**
- * {@code config/healthindicator.json}. Created with defaults on first launch; edit it and restart.
+ * {@code config/indicatorbars.json}. Created with defaults on first launch; edit it and restart.
  * The toggle key flips {@link #showBars} in game and saves it.
  */
-public class HIConfig {
+public class IBConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	public enum BarMode {
@@ -85,17 +85,17 @@ public class HIConfig {
 	/** Resolved on first use: other mods register their entity types after this config loads. */
 	private transient Set<EntityType<?>> blacklistedTypes;
 
-	public static HIConfig load(Path path) {
-		HIConfig config = null;
+	public static IBConfig load(Path path) {
+		IBConfig config = null;
 		if (Files.exists(path)) {
 			try (Reader reader = Files.newBufferedReader(path)) {
-				config = GSON.fromJson(reader, HIConfig.class);
+				config = GSON.fromJson(reader, IBConfig.class);
 			} catch (IOException | JsonParseException e) {
-				HealthIndicator.LOGGER.error("Could not read {}, using defaults", path, e);
+				IndicatorBars.LOGGER.error("Could not read {}, using defaults", path, e);
 			}
 		}
 		if (config == null) {
-			config = new HIConfig();
+			config = new IBConfig();
 		}
 		config.path = path;
 		config.fillMissing();
@@ -110,7 +110,7 @@ public class HIConfig {
 				GSON.toJson(this, writer);
 			}
 		} catch (IOException e) {
-			HealthIndicator.LOGGER.error("Could not write {}", path, e);
+			IndicatorBars.LOGGER.error("Could not write {}", path, e);
 		}
 	}
 
@@ -123,7 +123,7 @@ public class HIConfig {
 
 	/** Gson leaves unknown enum names and missing lists as null: put the defaults back. */
 	private void fillMissing() {
-		HIConfig defaults = new HIConfig();
+		IBConfig defaults = new IBConfig();
 		if (barMode == null) {
 			barMode = defaults.barMode;
 		}
@@ -148,7 +148,7 @@ public class HIConfig {
 			if (id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
 				types.add(BuiltInRegistries.ENTITY_TYPE.get(id));
 			} else {
-				HealthIndicator.LOGGER.warn("Unknown entity type '{}' in the blacklist of {}", entry, path);
+				IndicatorBars.LOGGER.warn("Unknown entity type '{}' in the blacklist of {}", entry, path);
 			}
 		}
 		return types;

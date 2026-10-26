@@ -1,10 +1,10 @@
-package net.firstwemine1.healthindicator.render;
+package net.firstwemine1.indicatorbars.render;
 
 import java.util.Locale;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.firstwemine1.healthindicator.core.BarStyle;
-import net.firstwemine1.healthindicator.core.HIConfig;
+import net.firstwemine1.indicatorbars.core.BarStyle;
+import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -61,7 +61,7 @@ public final class TargetPanelRenderer {
 		return drawingPortrait;
 	}
 
-	public static void render(GuiGraphics graphics, LivingEntity target, float alpha, HIConfig config) {
+	public static void render(GuiGraphics graphics, LivingEntity target, float alpha, IBConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Font font = minecraft.font;
 		Component name = target.getDisplayName();
@@ -154,7 +154,7 @@ public final class TargetPanelRenderer {
 		}
 	}
 
-	private static String healthText(float health, float maxHealth, HIConfig.HealthText mode) {
+	private static String healthText(float health, float maxHealth, IBConfig.HealthText mode) {
 		return switch (mode) {
 			case FRACTION -> number(health) + "/" + number(maxHealth);
 			case PERCENT -> Math.round(BarStyle.fraction(health, maxHealth) * 100) + "%";

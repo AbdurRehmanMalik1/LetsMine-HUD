@@ -1,4 +1,4 @@
-# Health Indicator
+# Indicator Bars
 
 A client-only mod that shows mob health in two places:
 
@@ -14,7 +14,7 @@ Press **H** to turn the floating bars on or off.
 
 ## Config
 
-`config/healthindicator.json` is written with defaults on first launch. Edit it and restart.
+`config/indicatorbars.json` is written with defaults on first launch. Edit it and restart.
 
 | Option | Default | Values |
 |---|---|---|
@@ -40,11 +40,11 @@ its own branch (`fabric/<mc>`, `forge/<mc>`, `neoforge/<mc>`), checked out as a 
 other ports:
 
 ```
-git worktree add "../ports/health-indicator-neoforge-26.3" -b neoforge/26.3
+git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 ```
 
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
-Design and porting plan: `mod-ideas/health-indicator-design.md` in the workspace.
+Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
 ## Building and testing (this branch: Forge 1.20.1)
 

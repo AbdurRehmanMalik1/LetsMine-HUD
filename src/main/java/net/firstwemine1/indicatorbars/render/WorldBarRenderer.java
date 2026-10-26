@@ -1,9 +1,9 @@
-package net.firstwemine1.healthindicator.render;
+package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.firstwemine1.healthindicator.core.BarStyle;
-import net.firstwemine1.healthindicator.core.HIConfig;
+import net.firstwemine1.indicatorbars.core.BarStyle;
+import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -35,7 +35,7 @@ public final class WorldBarRenderer {
 	}
 
 	/** Called with the pose stack at the mob's feet, right after vanilla renders it. */
-	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, HIConfig config) {
+	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, IBConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		poseStack.pushPose();
 		float lift = LIFT + (nameTagShown(entity, minecraft) ? NAME_TAG_CLEARANCE : 0);
