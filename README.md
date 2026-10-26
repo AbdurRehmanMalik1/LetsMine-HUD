@@ -1,37 +1,50 @@
 # Indicator Bars
 
-A client-only mod that shows mob health in two places:
+A client-only mod of meters: small bars and counters for numbers the game knows but doesn't show well.
+Every meter reads data vanilla already sends to the client, so the mod needs nothing on the server and
+works on any server, vanilla included.
 
+**Mob health**
 - **Target panel** (top-left of the HUD): a live portrait of the mob you are looking at (up to 32 blocks
-  away), its name, a heart with its health (`6/10`) and a health bar.
+  away), its name, a heart with its health (`6/10`) and a health bar. The portrait is sized from the
+  mob's model, so a pig's snout or a horse's head fits.
 - **Floating bars**: a small health bar above every living mob within 24 blocks, facing the camera
-  like a name tag.
+  like a name tag. Press **H** to turn them on or off.
 
-Vanilla already sends every mob's health to clients, so the mod needs nothing on the server and works
-on any server, vanilla included.
-
-Press **H** to turn the floating bars on or off.
+**Durability**
+- **Slot counter**: uses left, as a small number on every worn-down tool, weapon and piece of armor, in
+  the hotbar and every inventory screen.
+- **Equipment column** (right of the hotbar): what you wear and hold, with uses left. An item at 10% or
+  less turns red and a bell plays once when it gets there.
 
 ## Config
 
-`config/indicatorbars.json` is written with defaults on first launch. Edit it and restart.
+`config/indicatorbars.json` is written with defaults on first launch, one section per meter. Edit it
+and restart.
 
 | Option | Default | Values |
 |---|---|---|
-| `showBars` | `true` | Also flipped by the toggle key |
-| `barMode` | `"all"` | `all`, `damaged` (below full health only), `target` (panel mob only) |
-| `barDistance` | `24` | Blocks |
-| `seeThrough` | `false` | Bars show through walls |
-| `barScale` | `1.0` | |
-| `barColor` | `"green"` | `green`, `gradient` (red to green by health), `hostility` (red hostile, yellow neutral, green passive) |
-| `showForPlayers` | `true` | |
-| `showPanel` | `true` | |
-| `panelAnchor` | `"top_left"` | `top_left`, `top_center`, `top_right`, `bottom_left`, `bottom_right` |
-| `panelX`, `panelY` | `4`, `4` | Offset from the anchor |
-| `panelLingerSeconds` | `2` | How long the panel stays after you look away |
-| `targetRange` | `32` | Blocks |
-| `healthText` | `"fraction"` | `fraction` (`6/10`), `percent`, `hearts`, `off` |
-| `blacklist` | `["minecraft:armor_stand"]` | Entity type ids with no bar and no panel |
+| `health.showBars` | `true` | Also flipped by the toggle key |
+| `health.barMode` | `"all"` | `all`, `damaged` (below full health only), `target` (panel mob only) |
+| `health.barDistance` | `24` | Blocks |
+| `health.seeThrough` | `false` | Bars show through walls |
+| `health.barScale` | `1.0` | |
+| `health.barColor` | `"green"` | `green`, `gradient` (red to green by health), `hostility` (red hostile, yellow neutral, green passive) |
+| `health.showForPlayers` | `true` | |
+| `health.showPanel` | `true` | |
+| `health.panelAnchor` | `"top_left"` | `top_left`, `top_center`, `top_right`, `bottom_left`, `bottom_right`, `hotbar_left`, `hotbar_right` |
+| `health.panelX`, `health.panelY` | `4`, `4` | Offset from the anchor |
+| `health.panelLingerSeconds` | `2` | How long the panel stays after you look away |
+| `health.targetRange` | `32` | Blocks |
+| `health.healthText` | `"fraction"` | `fraction` (`6/10`), `percent`, `hearts`, `off` |
+| `health.blacklist` | `["minecraft:armor_stand"]` | Entity type ids with no bar and no panel |
+| `durability.slotCounter` | `"damaged"` | `always`, `damaged` (below full only), `off` |
+| `durability.equipmentHud` | `"damaged"` | `always`, `damaged` (only items below full), `off` |
+| `durability.hudAnchor` | `"hotbar_right"` | Any `health.panelAnchor` value |
+| `durability.hudX`, `durability.hudY` | `0`, `0` | Offset from the anchor |
+| `durability.hudText` | `"uses"` | `uses` (`231`), `fraction` (`231/250`), `percent` |
+| `durability.warnPercent` | `10` | At or below this, an item turns red |
+| `durability.warnSound` | `true` | A bell when an item wears down to the warning line |
 
 ## Branches
 
