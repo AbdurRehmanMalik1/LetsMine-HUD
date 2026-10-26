@@ -8,6 +8,9 @@ public interface HealthBarState {
 	Bar indicatorbars$bar();
 
 	final class Bar {
+		/** Whether this mob is in the target panel, so its model is captured for the portrait. */
+		public boolean target;
+		public int entityId;
 		public boolean visible;
 		public float fraction;
 		public int color;

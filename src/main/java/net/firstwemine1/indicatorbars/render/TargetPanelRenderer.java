@@ -16,7 +16,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 /**
  * The HUD panel for the targeted mob: a live portrait, its name, a heart with its health, and a bar.
@@ -48,8 +47,6 @@ public final class TargetPanelRenderer {
 	/** Turns the portrait to a three-quarter view. */
 	private static final float PORTRAIT_YAW = 30;
 	private static final float PORTRAIT_PITCH = -10;
-	/** Pixels per block, so tiny mobs (silverfish, endermites) don't fill the whole box. */
-	private static final float MAX_PORTRAIT_SCALE = 40;
 
 	private TargetPanelRenderer() {
 	}
@@ -120,17 +117,20 @@ public final class TargetPanelRenderer {
 			living.bodyRot = 180 + PORTRAIT_YAW;
 			living.yRot = 0;
 			living.xRot = 0;
+			// Standing still, so the fit measured once stays right. A dying mob keeps its red tint but
+			// doesn't fall over out of the box.
+			living.walkAnimationPos = 0;
+			living.walkAnimationSpeed = 0;
+			living.deathTime = 0;
 			// Babies and scaled mobs are drawn at their own size, as the inventory does.
 			living.boundingBoxWidth /= living.scale;
 			living.boundingBoxHeight /= living.scale;
 			living.scale = 1;
 		}
-		float size = Math.max(state.boundingBoxHeight, state.boundingBoxWidth);
-		float scale = Math.min((x1 - x0) * 0.8f / size, MAX_PORTRAIT_SCALE);
 		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
 		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
-		Vector3f translation = new Vector3f(0, state.boundingBoxHeight / 2, 0);
-		graphics.entity(state, scale, translation, rotation, pitch, x0, y0, x1, y1);
+		PortraitFit.Fit fit = PortraitFit.fit(target, state, rotation, x1 - x0);
+		graphics.entity(state, fit.scale(), fit.translation(), rotation, pitch, x0, y0, x1, y1);
 	}
 
 	private static String healthText(float health, float maxHealth, IBConfig.HealthText mode) {
