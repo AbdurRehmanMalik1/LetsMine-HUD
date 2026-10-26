@@ -82,7 +82,8 @@ public class HIConfig {
 	public List<String> blacklist = new ArrayList<>(List.of("minecraft:armor_stand"));
 
 	private transient Path path;
-	private transient Set<EntityType<?>> blacklistedTypes = Set.of();
+	/** Resolved on first use: other mods register their entity types after this config loads. */
+	private transient Set<EntityType<?>> blacklistedTypes;
 
 	public static HIConfig load(Path path) {
 		HIConfig config = null;
@@ -114,6 +115,9 @@ public class HIConfig {
 	}
 
 	public boolean isBlacklisted(EntityType<?> type) {
+		if (blacklistedTypes == null) {
+			blacklistedTypes = resolveBlacklist();
+		}
 		return blacklistedTypes.contains(type);
 	}
 
@@ -135,7 +139,9 @@ public class HIConfig {
 		if (blacklist == null) {
 			blacklist = defaults.blacklist;
 		}
+	}
 
+	private Set<EntityType<?>> resolveBlacklist() {
 		Set<EntityType<?>> types = new HashSet<>();
 		for (String entry : blacklist) {
 			Identifier id = Identifier.tryParse(entry);
@@ -145,6 +151,6 @@ public class HIConfig {
 				HealthIndicator.LOGGER.warn("Unknown entity type '{}' in the blacklist of {}", entry, path);
 			}
 		}
-		blacklistedTypes = types;
+		return types;
 	}
 }
