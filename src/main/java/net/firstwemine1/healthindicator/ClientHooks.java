@@ -26,8 +26,9 @@ import net.minecraft.world.entity.LivingEntity;
  * events into these calls, so this class and everything under it is the same on every loader.
  */
 public final class ClientHooks {
-	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.healthindicator.toggle_bars",
-			InputConstants.KEY_H, KeyMapping.Category.register(HealthIndicator.id(HealthIndicator.MOD_ID)));
+	/** Registered by each loader's entrypoint: vanilla's registry on Fabric, an event on NeoForge. */
+	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(HealthIndicator.id(HealthIndicator.MOD_ID));
+	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.healthindicator.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static HIConfig config;
