@@ -16,7 +16,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.firstwemine1.indicatorbars.meter.HudAnchor;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 
@@ -94,8 +94,8 @@ public class IBConfig {
 			Set<EntityType<?>> types = new HashSet<>();
 			for (String entry : blacklist) {
 				ResourceLocation id = ResourceLocation.tryParse(entry);
-				if (id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
-					types.add(BuiltInRegistries.ENTITY_TYPE.get(id));
+				if (id != null && Registry.ENTITY_TYPE.containsKey(id)) {
+					types.add(Registry.ENTITY_TYPE.get(id));
 				} else {
 					IndicatorBars.LOGGER.warn("Unknown entity type '{}' in the health blacklist", entry);
 				}

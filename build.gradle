@@ -22,9 +22,10 @@ minecraft {
             workingDirectory project.file('run/client')
             property 'forge.logging.console.level', 'info'
             args '--username', 'Player1'
-            // ./gradlew runClient -PquickPlay="World" opens that world straight away.
+            // ./gradlew runClient -PquickPlay="World" opens that world straight away (platform/DevQuickPlay:
+            // this version has no --quickPlaySingleplayer).
             if (project.hasProperty('quickPlay')) {
-                args '--quickPlaySingleplayer', project.property('quickPlay')
+                property 'indicatorbars.quickPlay', project.property('quickPlay')
             }
             mods {
                 "${mod_id}" {

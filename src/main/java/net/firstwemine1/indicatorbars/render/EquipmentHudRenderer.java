@@ -3,13 +3,13 @@ package net.firstwemine1.indicatorbars.render;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.firstwemine1.indicatorbars.meter.durability.Durability;
 import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
@@ -36,7 +36,7 @@ public final class EquipmentHudRenderer {
 	private EquipmentHudRenderer() {
 	}
 
-	public static void render(GuiGraphics graphics, DurabilityConfig config, float partialTick) {
+	public static void render(PoseStack poseStack, DurabilityConfig config, float partialTick) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Player player = minecraft.player;
 		if (!config.showNumbers || config.equipmentHud == DurabilityConfig.Show.OFF || player == null || player.isSpectator()) {
@@ -62,19 +62,19 @@ public final class EquipmentHudRenderer {
 		int height = rows.size() * ROW - 1;
 		boolean offhand = !player.getOffhandItem().isEmpty();
 		boolean rightHanded = player.getMainArm() == HumanoidArm.RIGHT;
-		int[] corner = config.hudAnchor.place(graphics.guiWidth(), graphics.guiHeight(), width, height,
-				config.hudX, config.hudY, offhand && rightHanded, offhand && !rightHanded);
+		int[] corner = config.hudAnchor.place(minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight(),
+				width, height, config.hudX, config.hudY, offhand && rightHanded, offhand && !rightHanded);
 
 		float pulse = 0.55f + 0.45f * Mth.sin((player.tickCount + partialTick) * Mth.TWO_PI / PULSE_TICKS);
 		for (int i = 0; i < rows.size(); i++) {
 			ItemStack stack = rows.get(i);
 			int x = corner[0];
 			int y = corner[1] + i * ROW;
-			graphics.renderItem(stack, x, y);
+			minecraft.getItemRenderer().renderGuiItem(stack, x, y);
 			int color = Durability.low(stack, config.warnPercent)
 					? MeterStyle.multiplyAlpha(MeterStyle.RED, pulse)
 					: Durability.color(stack);
-			graphics.drawString(font, Durability.text(stack, config.hudText), x + ICON + TEXT_GAP, y + (ICON - font.lineHeight) / 2 + 1, color, true);
+			font.drawShadow(poseStack, Durability.text(stack, config.hudText), x + ICON + TEXT_GAP, y + (ICON - font.lineHeight) / 2 + 1, color);
 		}
 	}
 }

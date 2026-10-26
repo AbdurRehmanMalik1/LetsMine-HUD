@@ -47,7 +47,7 @@ public class EquipmentTracker {
 		}
 		primed = true;
 		if (warn && config.warnSound) {
-			minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BELL.value(), WARN_PITCH, WARN_VOLUME));
+			minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BELL, WARN_PITCH, WARN_VOLUME));
 		}
 	}
 

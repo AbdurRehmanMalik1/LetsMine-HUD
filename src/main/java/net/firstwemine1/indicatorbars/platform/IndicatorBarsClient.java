@@ -27,8 +27,8 @@ final class IndicatorBarsClient {
 
 	/** Forge decorates per item, so the durability number is registered on every item; it skips the rest. */
 	private static void registerSlotCounter(RegisterItemDecorationsEvent event) {
-		IItemDecorator counter = (graphics, font, stack, x, y) -> {
-			ClientHooks.renderSlot(graphics, font, stack, x, y);
+		IItemDecorator counter = (font, stack, x, y, blitOffset) -> {
+			ClientHooks.renderSlot(font, stack, x, y, blitOffset);
 			return false;
 		};
 		for (Item item : ForgeRegistries.ITEMS) {
@@ -43,23 +43,24 @@ final class IndicatorBarsClient {
 			event.register(ClientHooks.TOGGLE_DURABILITY);
 		});
 		modBus.addListener((RegisterGuiOverlaysEvent event) -> {
-			event.registerAboveAll("target_panel", (gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick));
-			event.registerAboveAll("durability_hud", (gui, graphics, partialTick, width, height) -> ClientHooks.renderEquipmentHud(graphics, partialTick));
+			event.registerAboveAll("target_panel", (gui, poseStack, partialTick, width, height) -> ClientHooks.renderHud(poseStack, partialTick));
+			event.registerAboveAll("durability_hud", (gui, poseStack, partialTick, width, height) -> ClientHooks.renderEquipmentHud(poseStack, partialTick));
 		});
 		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 
 		IEventBus bus = MinecraftForge.EVENT_BUS;
+		DevQuickPlay.register(bus);
 		bus.addListener((TickEvent.ClientTickEvent event) -> {
 			if (event.phase == TickEvent.Phase.END) {
 				ClientHooks.tick(Minecraft.getInstance());
 			}
 		});
 		bus.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
-		// Entities render between the solid blocks and the end of the level.
+		// Entities render between the solid blocks and the weather (1.19.2 has no AFTER_LEVEL stage).
 		bus.addListener((RenderLevelStageEvent event) -> {
 			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
 				ClientHooks.setRenderingLevel(true);
-			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
 				ClientHooks.setRenderingLevel(false);
 			}
 		});

@@ -61,7 +61,7 @@ git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
-## Building and testing (this branch: Forge 1.20.1)
+## Building and testing (this branch: Forge 1.19.2)
 
 Gradle 8.6 can't run on Java 25: point `JAVA_HOME` at JDK 21 first (the mod itself compiles for 17).
 
@@ -72,7 +72,7 @@ Gradle 8.6 can't run on Java 25: point `JAVA_HOME` at JDK 21 first (the mod itse
 ```
 
 Forge has no client game test like Fabric's. `testing/ib_test` is a datapack that rebuilds the same
-scene: copy it into a 1.20.1 world's `datapacks/` folder and open the world. The first time a player
+scene: copy it into a 1.19.2 world's `datapacks/` folder and open the world. The first time a player
 joins, it sets noon, faces them south and summons the cows (the one ahead at 6/10, a calf, "Daisy" at
 3/10). Take a screenshot with F2. With cheats on, `/function ib_test:portrait/<mob>` (`pig`, `pig_baby`,
 `cow`, `chicken`, `horse`, `sheep`, `spider`, `wolf`, `ghast`, `slime`) clears the area and puts that

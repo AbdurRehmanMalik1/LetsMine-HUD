@@ -1,7 +1,9 @@
 package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
+import com.mojang.math.Quaternion;
+import com.mojang.math.Vector3f;
+import com.mojang.math.Vector4f;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.AgeableListModel;
 import net.minecraft.client.model.EntityModel;
@@ -11,8 +13,6 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 /**
  * Sizes and centres the panel's portrait from the mob's model, not its hitbox: hitboxes are square seen
@@ -21,6 +21,16 @@ import org.joml.Vector3f;
  * are opened in META-INF/accesstransformer.cfg.
  */
 public final class PortraitFit {
+	/**
+	 * The inventory preview turns the mob by a mouse offset: body {@code atan(x / 40) * 20} degrees, head
+	 * twice that, view pitch {@code atan(y / 40) * 20}. These give a three-quarter view (body 30 degrees)
+	 * looking slightly down (10 degrees).
+	 */
+	public static final float MOUSE_X = (float) (40 * Math.tan(30.0 / 20));
+	public static final float MOUSE_Y = (float) (40 * Math.tan(-10.0 / 20));
+	private static final float BODY_YAW = (float) Math.atan(MOUSE_X / 40) * 20;
+	private static final float VIEW_PITCH = (float) Math.atan(MOUSE_Y / 40) * 20;
+
 	/** How much of the box the model's larger side fills. */
 	private static final float FILL = 0.85f;
 	/** Pixels per block, so tiny mobs (silverfish, endermites) don't fill the whole box. */
@@ -45,10 +55,10 @@ public final class PortraitFit {
 		fit = null;
 	}
 
-	/** Measured once per target. Call with the target already turned for the portrait. */
-	public static Fit fit(LivingEntity target, Quaternionf rotation, int x0, int y0, int x1, int y1) {
+	/** Measured once per target. */
+	public static Fit fit(LivingEntity target, int x0, int y0, int x1, int y1) {
 		if (target != fittedTarget || fit == null) {
-			float[] bounds = measure(target, rotation);
+			float[] bounds = measure(target);
 			fittedTarget = target;
 			fit = bounds != null ? place(bounds, x0, y0, x1, y1) : hitbox(target, x0, y0, x1, y1);
 		}
@@ -56,7 +66,7 @@ public final class PortraitFit {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static float @Nullable [] measure(LivingEntity target, Quaternionf rotation) {
+	private static float @Nullable [] measure(LivingEntity target) {
 		EntityRenderer<? super LivingEntity> entityRenderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(target);
 		if (!(entityRenderer instanceof LivingEntityRenderer<?, ?> living)) {
 			return null;
@@ -64,12 +74,15 @@ public final class PortraitFit {
 		LivingEntityRenderer<LivingEntity, EntityModel<LivingEntity>> renderer = (LivingEntityRenderer<LivingEntity, EntityModel<LivingEntity>>) living;
 		EntityModel<LivingEntity> model = renderer.getModel();
 		model.young = target.isBaby();
-		model.setupAnim(target, 0, 0, target.tickCount, 0, 0);
+		// The head turns twice as far as the body in the preview, and looks down by the view pitch.
+		model.setupAnim(target, 0, 0, target.tickCount, BODY_YAW, -VIEW_PITCH);
 
 		// The GUI rotation, then the same steps as LivingEntityRenderer.render for a standing mob.
+		Quaternion rotation = Vector3f.ZP.rotationDegrees(180);
+		rotation.mul(Vector3f.XP.rotationDegrees(VIEW_PITCH));
 		PoseStack poseStack = new PoseStack();
 		poseStack.mulPose(rotation);
-		poseStack.mulPose(Axis.YP.rotationDegrees(180 - target.yBodyRot));
+		poseStack.mulPose(Vector3f.YP.rotationDegrees(180 - (180 + BODY_YAW)));
 		poseStack.scale(-1, -1, 1);
 		renderer.scale(target, poseStack, 1);
 		poseStack.translate(0, MODEL_OFFSET, 0);
@@ -118,14 +131,15 @@ public final class PortraitFit {
 				return;
 			}
 			for (int corner = 0; corner < 8; corner++) {
-				float x = ((corner & 1) == 0 ? cube.minX : cube.maxX) / 16;
-				float y = ((corner & 2) == 0 ? cube.minY : cube.maxY) / 16;
-				float z = ((corner & 4) == 0 ? cube.minZ : cube.maxZ) / 16;
-				Vector3f point = pose.pose().transformPosition(x, y, z, new Vector3f());
-				bounds[0] = Math.min(bounds[0], point.x);
-				bounds[1] = Math.min(bounds[1], point.y);
-				bounds[2] = Math.max(bounds[2], point.x);
-				bounds[3] = Math.max(bounds[3], point.y);
+				Vector4f point = new Vector4f(
+						((corner & 1) == 0 ? cube.minX : cube.maxX) / 16,
+						((corner & 2) == 0 ? cube.minY : cube.maxY) / 16,
+						((corner & 4) == 0 ? cube.minZ : cube.maxZ) / 16, 1);
+				point.transform(pose.pose());
+				bounds[0] = Math.min(bounds[0], point.x());
+				bounds[1] = Math.min(bounds[1], point.y());
+				bounds[2] = Math.max(bounds[2], point.x());
+				bounds[3] = Math.max(bounds[3], point.y());
 			}
 		});
 	}
