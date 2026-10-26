@@ -1,4 +1,4 @@
-package net.firstwemine1.healthindicator.core;
+package net.firstwemine1.indicatorbars.core;
 
 import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,7 +22,7 @@ public final class BarStyle {
 		return maxHealth > 0 ? Math.clamp(health / maxHealth, 0, 1) : 0;
 	}
 
-	public static int fillColor(LivingEntity entity, float fraction, HIConfig.BarColor mode) {
+	public static int fillColor(LivingEntity entity, float fraction, IBConfig.BarColor mode) {
 		return switch (mode) {
 			case GREEN -> GREEN;
 			case GRADIENT -> fraction < 0.5f

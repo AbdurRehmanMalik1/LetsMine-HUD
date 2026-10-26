@@ -24,4 +24,4 @@ ordering="NONE"
 side="${neoforge_minecraft_side}"
 
 [[mixins]]
-config="healthindicator.client.mixins.json"
+config="indicatorbars.client.mixins.json"

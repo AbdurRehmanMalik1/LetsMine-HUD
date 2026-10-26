@@ -1,7 +1,7 @@
-package net.firstwemine1.healthindicator.platform.mixin;
+package net.firstwemine1.indicatorbars.platform.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.healthindicator.ClientHooks;
+import net.firstwemine1.indicatorbars.ClientHooks;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -21,13 +21,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class LivingEntityRendererMixin {
 	@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;F)V",
 			at = @At("TAIL"))
-	private void healthindicator$extractBar(LivingEntity entity, LivingEntityRenderState state, float partialTicks, CallbackInfo ci) {
+	private void indicatorbars$extractBar(LivingEntity entity, LivingEntityRenderState state, float partialTicks, CallbackInfo ci) {
 		ClientHooks.extractBar(entity, state);
 	}
 
 	@Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
 			at = @At("TAIL"))
-	private void healthindicator$submitBar(LivingEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector,
+	private void indicatorbars$submitBar(LivingEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector,
 			CameraRenderState camera, CallbackInfo ci) {
 		ClientHooks.submitBar(state, poseStack, collector, camera);
 	}
