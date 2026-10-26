@@ -16,6 +16,7 @@ works on any server, vanilla included.
   the hotbar and every inventory screen.
 - **Equipment column** (right of the hotbar): what you wear and hold, with uses left. An item at 10% or
   less turns red and a bell plays once when it gets there.
+- Press **J** to hide or show all durability numbers.
 
 ## Config
 
@@ -38,6 +39,7 @@ and restart.
 | `health.targetRange` | `32` | Blocks |
 | `health.healthText` | `"fraction"` | `fraction` (`6/10`), `percent`, `hearts`, `off` |
 | `health.blacklist` | `["minecraft:armor_stand"]` | Entity type ids with no bar and no panel |
+| `durability.showNumbers` | `true` | Also flipped by **J**: hides slot counters and the equipment column |
 | `durability.slotCounter` | `"damaged"` | `always`, `damaged` (below full only), `off` |
 | `durability.equipmentHud` | `"damaged"` | `always`, `damaged` (only items below full), `off` |
 | `durability.hudAnchor` | `"hotbar_right"` | Any `health.panelAnchor` value |

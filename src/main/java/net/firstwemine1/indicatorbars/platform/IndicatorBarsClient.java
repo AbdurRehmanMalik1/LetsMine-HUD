@@ -25,6 +25,7 @@ public final class IndicatorBarsClient {
 		modBus.addListener((RegisterKeyMappingsEvent event) -> {
 			event.registerCategory(ClientHooks.KEY_CATEGORY);
 			event.register(ClientHooks.TOGGLE_BARS);
+			event.register(ClientHooks.TOGGLE_DURABILITY);
 		});
 		modBus.addListener((RegisterGuiLayersEvent event) -> {
 			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::extractHud);

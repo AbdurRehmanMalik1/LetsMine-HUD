@@ -141,6 +141,8 @@ public class IBConfig {
 			@SerializedName("percent") PERCENT
 		}
 
+		/** Hides the slot counter and the equipment column at once; the durability key flips it. */
+		public boolean showNumbers = true;
 		/** The number on each damageable item's slot, in the hotbar and inventories. */
 		public Show slotCounter = Show.DAMAGED;
 		/** The column of worn and held items. */
