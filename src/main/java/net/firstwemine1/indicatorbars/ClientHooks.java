@@ -32,6 +32,8 @@ import net.minecraft.world.item.ItemStack;
 public final class ClientHooks {
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H,
 			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J,
+			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
@@ -57,6 +59,14 @@ public final class ClientHooks {
 			if (minecraft.player != null) {
 				minecraft.player.displayClientMessage(Component.translatable(
 						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
+			}
+		}
+		while (TOGGLE_DURABILITY.consumeClick()) {
+			config.durability.showNumbers = !config.durability.showNumbers;
+			config.save();
+			if (minecraft.player != null) {
+				minecraft.player.displayClientMessage(Component.translatable(
+						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"), true);
 			}
 		}
 		if (minecraft.level == null) {

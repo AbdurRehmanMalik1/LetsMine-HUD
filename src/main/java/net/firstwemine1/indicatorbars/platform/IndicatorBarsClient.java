@@ -38,7 +38,10 @@ final class IndicatorBarsClient {
 
 	static void init(IEventBus modBus) {
 		ClientHooks.init(FMLPaths.CONFIGDIR.get());
-		modBus.addListener((RegisterKeyMappingsEvent event) -> event.register(ClientHooks.TOGGLE_BARS));
+		modBus.addListener((RegisterKeyMappingsEvent event) -> {
+			event.register(ClientHooks.TOGGLE_BARS);
+			event.register(ClientHooks.TOGGLE_DURABILITY);
+		});
 		modBus.addListener((RegisterGuiOverlaysEvent event) -> {
 			event.registerAboveAll("target_panel", (gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick));
 			event.registerAboveAll("durability_hud", (gui, graphics, partialTick, width, height) -> ClientHooks.renderEquipmentHud(graphics, partialTick));
