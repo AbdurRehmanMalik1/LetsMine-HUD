@@ -5,7 +5,6 @@ import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -36,16 +35,18 @@ public final class IndicatorBarsClient {
 		NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
 	}
 
-	/** NeoForge decorates per item: register the durability number on every item that can wear down. */
+	/**
+	 * NeoForge decorates per item, so the durability number is registered on every item; it skips stacks
+	 * that can't wear down. Asking which items can is not possible here: the event fires before item
+	 * components are bound.
+	 */
 	private static void registerSlotCounter(RegisterItemDecorationsEvent event) {
 		IItemDecorator counter = (graphics, font, stack, x, y) -> {
 			ClientHooks.extractSlot(graphics, font, stack, x, y);
 			return false;
 		};
 		for (Item item : BuiltInRegistries.ITEM) {
-			if (new ItemStack(item).isDamageableItem()) {
-				event.register(item, counter);
-			}
+			event.register(item, counter);
 		}
 	}
 }
