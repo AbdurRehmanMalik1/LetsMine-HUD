@@ -17,7 +17,7 @@ fabricApi {
 	// bars and the panel into build/run/clientGameTest/screenshots. Source in src/gametest.
 	configureTests {
 		createSourceSet = true
-		modId = "healthindicator-test"
+		modId = "indicatorbars-test"
 		enableGameTests = false
 		eula = true
 	}

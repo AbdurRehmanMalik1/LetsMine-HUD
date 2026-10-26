@@ -1,8 +1,8 @@
 {
 	"schemaVersion": 1,
-	"id": "healthindicator",
+	"id": "indicatorbars",
 	"version": "${version}",
-	"name": "Health Indicator",
+	"name": "Indicator Bars",
 	"description": "Shows the health of the mob you look at in a HUD panel, and a health bar above every nearby mob. Client-only: works on any server.",
 	"authors": [
 		"firstwemine1-mc-dev"
@@ -11,11 +11,11 @@
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"net.firstwemine1.healthindicator.platform.HealthIndicatorClient"
+			"net.firstwemine1.indicatorbars.platform.IndicatorBarsClient"
 		]
 	},
 	"mixins": [
-		"healthindicator.client.mixins.json"
+		"indicatorbars.client.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.5",

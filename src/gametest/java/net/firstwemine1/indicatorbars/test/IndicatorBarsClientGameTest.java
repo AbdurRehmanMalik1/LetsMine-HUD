@@ -1,4 +1,4 @@
-package net.firstwemine1.healthindicator.test;
+package net.firstwemine1.indicatorbars.test;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -10,7 +10,7 @@ import net.minecraft.client.CameraType;
  * Rebuilds the reference image: a herd of cows in a flat world, the one straight ahead hurt to 6/10.
  * Screenshots go to build/run/clientGameTest/screenshots; look at them, nothing is compared.
  */
-public class HealthIndicatorClientGameTest implements FabricClientGameTest {
+public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
@@ -28,11 +28,11 @@ public class HealthIndicatorClientGameTest implements FabricClientGameTest {
 			summon(server, "~6 ~ ~18", "Health:9f");
 			summon(server, "~-8 ~ ~22", "");
 			context.waitTicks(20);
-			context.takeScreenshot("health-indicator-cows");
+			context.takeScreenshot("indicator-bars-cows");
 
 			context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 			context.waitTicks(5);
-			context.takeScreenshot("health-indicator-cows-third-person");
+			context.takeScreenshot("indicator-bars-cows-third-person");
 			context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
 		}
 	}

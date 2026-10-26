@@ -1,9 +1,9 @@
-package net.firstwemine1.healthindicator.render;
+package net.firstwemine1.indicatorbars.render;
 
 import java.util.Locale;
 
-import net.firstwemine1.healthindicator.core.BarStyle;
-import net.firstwemine1.healthindicator.core.HIConfig;
+import net.firstwemine1.indicatorbars.core.BarStyle;
+import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -54,7 +54,7 @@ public final class TargetPanelRenderer {
 	private TargetPanelRenderer() {
 	}
 
-	public static void extract(GuiGraphicsExtractor graphics, LivingEntity target, float alpha, float partialTick, HIConfig config) {
+	public static void extract(GuiGraphicsExtractor graphics, LivingEntity target, float alpha, float partialTick, IBConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Font font = minecraft.font;
 		Component name = target.getDisplayName();
@@ -133,7 +133,7 @@ public final class TargetPanelRenderer {
 		graphics.entity(state, scale, translation, rotation, pitch, x0, y0, x1, y1);
 	}
 
-	private static String healthText(float health, float maxHealth, HIConfig.HealthText mode) {
+	private static String healthText(float health, float maxHealth, IBConfig.HealthText mode) {
 		return switch (mode) {
 			case FRACTION -> number(health) + "/" + number(maxHealth);
 			case PERCENT -> Math.round(BarStyle.fraction(health, maxHealth) * 100) + "%";

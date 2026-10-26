@@ -1,8 +1,8 @@
-package net.firstwemine1.healthindicator.render;
+package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.healthindicator.core.BarStyle;
-import net.firstwemine1.healthindicator.core.HIConfig;
+import net.firstwemine1.indicatorbars.core.BarStyle;
+import net.firstwemine1.indicatorbars.core.IBConfig;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -29,7 +29,7 @@ public final class WorldBarRenderer {
 	}
 
 	public static void submit(HealthBarState.Bar bar, LivingEntityRenderState state, PoseStack poseStack,
-			SubmitNodeCollector collector, CameraRenderState camera, HIConfig config) {
+			SubmitNodeCollector collector, CameraRenderState camera, IBConfig config) {
 		poseStack.pushPose();
 		float lift = LIFT + (state.nameTag != null ? NAME_TAG_CLEARANCE : 0);
 		poseStack.translate(0, state.boundingBoxHeight + lift, 0);

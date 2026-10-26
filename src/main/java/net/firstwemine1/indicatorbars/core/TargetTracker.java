@@ -1,4 +1,4 @@
-package net.firstwemine1.healthindicator.core;
+package net.firstwemine1.indicatorbars.core;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
@@ -12,8 +12,8 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The mob shown in the target panel: whatever the crosshair is on, out to {@link HIConfig#targetRange}
- * (vanilla's own pick only reaches about 3 blocks). Kept for {@link HIConfig#panelLingerSeconds} after
+ * The mob shown in the target panel: whatever the crosshair is on, out to {@link IBConfig#targetRange}
+ * (vanilla's own pick only reaches about 3 blocks). Kept for {@link IBConfig#panelLingerSeconds} after
  * you look away, then faded out.
  */
 public class TargetTracker {
@@ -28,12 +28,12 @@ public class TargetTracker {
 	}
 
 	/** 1 while the panel is fully shown, falling to 0 as it fades out. */
-	public float alpha(HIConfig config, float partialTick) {
+	public float alpha(IBConfig config, float partialTick) {
 		float fading = ticksAway + partialTick - lingerTicks(config);
 		return Math.clamp(1 - fading / FADE_TICKS, 0, 1);
 	}
 
-	public void tick(Minecraft minecraft, HIConfig config) {
+	public void tick(Minecraft minecraft, IBConfig config) {
 		LivingEntity seen = pick(minecraft, config);
 		if (seen != null) {
 			target = seen;
@@ -52,11 +52,11 @@ public class TargetTracker {
 		ticksAway = 0;
 	}
 
-	private static int lingerTicks(HIConfig config) {
+	private static int lingerTicks(IBConfig config) {
 		return (int) Math.round(config.panelLingerSeconds * 20);
 	}
 
-	private static @Nullable LivingEntity pick(Minecraft minecraft, HIConfig config) {
+	private static @Nullable LivingEntity pick(Minecraft minecraft, IBConfig config) {
 		Entity camera = minecraft.getCameraEntity();
 		Player player = minecraft.player;
 		if (camera == null || player == null || minecraft.level == null) {
@@ -84,7 +84,7 @@ public class TargetTracker {
 		return hit != null ? (LivingEntity) hit.getEntity() : null;
 	}
 
-	private static boolean targetable(LivingEntity entity, Player player, HIConfig config) {
+	private static boolean targetable(LivingEntity entity, Player player, IBConfig config) {
 		return entity != player && !entity.isInvisibleTo(player) && !config.isBlacklisted(entity.getType())
 				&& (config.showForPlayers || !(entity instanceof Player));
 	}

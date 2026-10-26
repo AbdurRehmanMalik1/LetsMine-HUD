@@ -1,4 +1,4 @@
-package net.firstwemine1.healthindicator.core;
+package net.firstwemine1.indicatorbars.core;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
@@ -11,7 +11,7 @@ public final class BarVisibility {
 	private BarVisibility() {
 	}
 
-	public static boolean shouldShow(LivingEntity entity, Minecraft minecraft, HIConfig config, @Nullable LivingEntity target) {
+	public static boolean shouldShow(LivingEntity entity, Minecraft minecraft, IBConfig config, @Nullable LivingEntity target) {
 		Player player = minecraft.player;
 		Entity camera = minecraft.getCameraEntity();
 		if (!config.showBars || player == null || camera == null) {

@@ -1,16 +1,16 @@
-package net.firstwemine1.healthindicator;
+package net.firstwemine1.indicatorbars;
 
 import java.nio.file.Path;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.firstwemine1.healthindicator.core.BarStyle;
-import net.firstwemine1.healthindicator.core.BarVisibility;
-import net.firstwemine1.healthindicator.core.HIConfig;
-import net.firstwemine1.healthindicator.core.TargetTracker;
-import net.firstwemine1.healthindicator.render.HealthBarState;
-import net.firstwemine1.healthindicator.render.TargetPanelRenderer;
-import net.firstwemine1.healthindicator.render.WorldBarRenderer;
+import net.firstwemine1.indicatorbars.core.BarStyle;
+import net.firstwemine1.indicatorbars.core.BarVisibility;
+import net.firstwemine1.indicatorbars.core.IBConfig;
+import net.firstwemine1.indicatorbars.core.TargetTracker;
+import net.firstwemine1.indicatorbars.render.HealthBarState;
+import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
+import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -27,17 +27,17 @@ import net.minecraft.world.entity.LivingEntity;
  */
 public final class ClientHooks {
 	/** Registered by each loader's entrypoint: vanilla's registry on Fabric, an event on NeoForge. */
-	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(HealthIndicator.id(HealthIndicator.MOD_ID));
-	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.healthindicator.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
+	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(IndicatorBars.id(IndicatorBars.MOD_ID));
+	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
-	private static HIConfig config;
+	private static IBConfig config;
 
 	private ClientHooks() {
 	}
 
 	public static void init(Path configDir) {
-		config = HIConfig.load(configDir.resolve(HealthIndicator.MOD_ID + ".json"));
+		config = IBConfig.load(configDir.resolve(IndicatorBars.MOD_ID + ".json"));
 	}
 
 	/** End of every client tick. */
@@ -47,7 +47,7 @@ public final class ClientHooks {
 			config.save();
 			if (minecraft.player != null) {
 				minecraft.player.sendOverlayMessage(Component.translatable(
-						config.showBars ? "healthindicator.bars.on" : "healthindicator.bars.off"));
+						config.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"));
 			}
 		}
 		if (minecraft.level == null) {
@@ -59,7 +59,7 @@ public final class ClientHooks {
 
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
 	public static void extractBar(LivingEntity entity, LivingEntityRenderState state) {
-		HealthBarState.Bar bar = ((HealthBarState) state).healthindicator$bar();
+		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
 		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target());
 		if (bar.visible) {
 			bar.fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
@@ -69,7 +69,7 @@ public final class ClientHooks {
 
 	/** A living entity was submitted for drawing; the pose stack is at its feet. */
 	public static void submitBar(LivingEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-		HealthBarState.Bar bar = ((HealthBarState) state).healthindicator$bar();
+		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
 		// GUI previews (inventory, horse screen, our own portrait) draw with a camera that was never set up.
 		if (bar.visible && camera.initialized) {
 			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config);
