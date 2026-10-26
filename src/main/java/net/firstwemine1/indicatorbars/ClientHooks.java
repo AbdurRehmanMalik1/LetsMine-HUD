@@ -37,6 +37,7 @@ public final class ClientHooks {
 	/** Registered by each loader's entrypoint: vanilla's registry on Fabric, an event on NeoForge. */
 	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(IndicatorBars.id(IndicatorBars.MOD_ID));
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
+	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
@@ -57,6 +58,14 @@ public final class ClientHooks {
 			if (minecraft.player != null) {
 				minecraft.player.sendOverlayMessage(Component.translatable(
 						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"));
+			}
+		}
+		while (TOGGLE_DURABILITY.consumeClick()) {
+			config.durability.showNumbers = !config.durability.showNumbers;
+			config.save();
+			if (minecraft.player != null) {
+				minecraft.player.sendOverlayMessage(Component.translatable(
+						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"));
 			}
 		}
 		if (minecraft.level == null) {

@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.firstwemine1.indicatorbars.ClientHooks;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -85,6 +86,12 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 		context.waitTicks(5);
 		context.takeScreenshot("durability-inventory");
 		context.setScreen(() -> null);
+
+		// J hides every durability number, and brings them back.
+		context.getInput().pressKey(ClientHooks.TOGGLE_DURABILITY);
+		context.waitTicks(5);
+		context.takeScreenshot("durability-hidden");
+		context.getInput().pressKey(ClientHooks.TOGGLE_DURABILITY);
 	}
 
 	/** The reference image: a herd of cows, the one straight ahead hurt to 6/10. */

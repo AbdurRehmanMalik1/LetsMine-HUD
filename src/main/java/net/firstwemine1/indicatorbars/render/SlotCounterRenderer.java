@@ -18,7 +18,7 @@ public final class SlotCounterRenderer {
 	}
 
 	public static void extract(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y, DurabilityConfig config) {
-		if (config.slotCounter == DurabilityConfig.Show.OFF || !Durability.tracked(stack)
+		if (!config.showNumbers || config.slotCounter == DurabilityConfig.Show.OFF || !Durability.tracked(stack)
 				|| config.slotCounter == DurabilityConfig.Show.DAMAGED && !stack.isDamaged()) {
 			return;
 		}

@@ -1,6 +1,9 @@
 {
 	"key.category.indicatorbars.indicatorbars": "Indicator Bars",
 	"key.indicatorbars.toggle_bars": "Toggle Health Bars",
+	"key.indicatorbars.toggle_durability": "Toggle Durability Numbers",
 	"indicatorbars.bars.on": "Health bars: on",
-	"indicatorbars.bars.off": "Health bars: off"
+	"indicatorbars.bars.off": "Health bars: off",
+	"indicatorbars.durability.on": "Durability numbers: on",
+	"indicatorbars.durability.off": "Durability numbers: off"
 }

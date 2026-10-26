@@ -40,7 +40,7 @@ public final class EquipmentHudRenderer {
 	public static void extract(GuiGraphicsExtractor graphics, DurabilityConfig config, float partialTick) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Player player = minecraft.player;
-		if (config.equipmentHud == DurabilityConfig.Show.OFF || player == null || player.isSpectator()) {
+		if (!config.showNumbers || config.equipmentHud == DurabilityConfig.Show.OFF || player == null || player.isSpectator()) {
 			return;
 		}
 		List<ItemStack> rows = new ArrayList<>();

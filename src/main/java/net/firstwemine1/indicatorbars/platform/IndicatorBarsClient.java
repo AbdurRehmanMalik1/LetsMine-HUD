@@ -18,6 +18,7 @@ public class IndicatorBarsClient implements ClientModInitializer {
 		ClientHooks.init(FabricLoader.getInstance().getConfigDir());
 		KeyMapping.Category.register(ClientHooks.KEY_CATEGORY.id());
 		KeyMappingHelper.registerKeyMapping(ClientHooks.TOGGLE_BARS);
+		KeyMappingHelper.registerKeyMapping(ClientHooks.TOGGLE_DURABILITY);
 		ClientTickEvents.END_CLIENT_TICK.register(ClientHooks::tick);
 		HudElementRegistry.addLast(IndicatorBars.id("target_panel"), ClientHooks::extractHud);
 		HudElementRegistry.addLast(IndicatorBars.id("durability_hud"), ClientHooks::extractEquipmentHud);
