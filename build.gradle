@@ -27,6 +27,10 @@ minecraft {
             if (project.hasProperty('quickPlay')) {
                 property 'indicatorbars.quickPlay', project.property('quickPlay')
             }
+            // -PtestScene: play testing/ib_test, screenshot it and quit (platform/DevQuickPlay).
+            if (project.hasProperty('testScene')) {
+                property 'indicatorbars.testScene', 'true'
+            }
             mods {
                 "${mod_id}" {
                     source sourceSets.main
