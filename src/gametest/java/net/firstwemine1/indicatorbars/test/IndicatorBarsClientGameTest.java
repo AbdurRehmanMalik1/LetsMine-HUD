@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -53,7 +54,37 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 				context.waitTicks(10);
 				context.takeScreenshot("portrait-" + portrait[0]);
 			}
+			durability(context, server);
 		}
+	}
+
+	/** Worn and held items at different wear: the durability column, slot counters, the inventory. */
+	private static void durability(ClientGameTestContext context, TestServerContext server) {
+		server.runCommand("kill @e[type=!player]");
+		String[][] items = {
+				{"armor.head", "diamond_helmet", "300"},
+				// 10 of 240 left: at the warning line, so red.
+				{"armor.chest", "iron_chestplate", "230"},
+				// Full: no counter, not in the column.
+				{"armor.legs", "golden_leggings", "0"},
+				{"armor.feet", "leather_boots", "20"},
+				{"weapon.mainhand", "diamond_sword", "800"},
+				{"weapon.offhand", "shield", "100"},
+				{"hotbar.1", "diamond_pickaxe", "1500"},
+				{"hotbar.2", "bow", "0"},
+				// Four digits: 2000 left.
+				{"hotbar.3", "netherite_axe", "31"},
+				{"hotbar.4", "elytra", "400"},
+		};
+		for (String[] item : items) {
+			server.runCommand("item replace entity @p " + item[0] + " with minecraft:" + item[1] + "[minecraft:damage=" + item[2] + "]");
+		}
+		context.waitTicks(10);
+		context.takeScreenshot("durability-hud");
+		context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
+		context.waitTicks(5);
+		context.takeScreenshot("durability-inventory");
+		context.setScreen(() -> null);
 	}
 
 	/** The reference image: a herd of cows, the one straight ahead hurt to 6/10. */

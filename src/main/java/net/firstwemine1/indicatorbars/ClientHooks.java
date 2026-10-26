@@ -6,23 +6,28 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.config.IBConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
 import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
+import net.firstwemine1.indicatorbars.render.EquipmentHudRenderer;
 import net.firstwemine1.indicatorbars.render.HealthBarState;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.PortraitRenderer;
+import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Everything the loader-specific code calls. Each loader's entrypoint and mixins only turn its own
@@ -34,6 +39,7 @@ public final class ClientHooks {
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
+	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
 	private static IBConfig config;
 
 	private ClientHooks() {
@@ -54,10 +60,11 @@ public final class ClientHooks {
 			}
 		}
 		if (minecraft.level == null) {
-			TARGET.reset();
+			reset();
 			return;
 		}
 		TARGET.tick(minecraft, config.health);
+		EQUIPMENT.tick(minecraft, config.durability);
 	}
 
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
@@ -88,6 +95,7 @@ public final class ClientHooks {
 		}
 	}
 
+	/** The mob health panel. */
 	public static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
@@ -100,9 +108,20 @@ public final class ClientHooks {
 		}
 	}
 
-	/** Disconnected: forget the target. */
+	/** The durability column. */
+	public static void extractEquipmentHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		EquipmentHudRenderer.extract(graphics, config.durability, deltaTracker.getGameTimeDeltaPartialTick(false));
+	}
+
+	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
+	public static void extractSlot(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y) {
+		SlotCounterRenderer.extract(graphics, font, stack, x, y, config.durability);
+	}
+
+	/** Disconnected or left the world: forget the target and the equipment. */
 	public static void reset() {
 		TARGET.reset();
+		EQUIPMENT.reset();
 		PortraitFit.reset();
 	}
 }

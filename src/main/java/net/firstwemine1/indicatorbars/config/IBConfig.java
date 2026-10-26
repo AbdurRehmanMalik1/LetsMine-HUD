@@ -28,6 +28,7 @@ public class IBConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	public HealthConfig health = new HealthConfig();
+	public DurabilityConfig durability = new DurabilityConfig();
 
 	private transient Path path;
 
@@ -123,6 +124,52 @@ public class IBConfig {
 		}
 	}
 
+	public static class DurabilityConfig {
+		public enum Show {
+			@SerializedName("always") ALWAYS,
+			/** Only items below full durability. */
+			@SerializedName("damaged") DAMAGED,
+			@SerializedName("off") OFF
+		}
+
+		public enum HudText {
+			/** {@code 231} */
+			@SerializedName("uses") USES,
+			/** {@code 231/250} */
+			@SerializedName("fraction") FRACTION,
+			/** {@code 92%} */
+			@SerializedName("percent") PERCENT
+		}
+
+		/** The number on each damageable item's slot, in the hotbar and inventories. */
+		public Show slotCounter = Show.DAMAGED;
+		/** The column of worn and held items. */
+		public Show equipmentHud = Show.DAMAGED;
+		public HudAnchor hudAnchor = HudAnchor.HOTBAR_RIGHT;
+		public int hudX = 0;
+		public int hudY = 0;
+		public HudText hudText = HudText.USES;
+		/** An item at or below this percentage of its durability turns red, and the warning plays once. */
+		public int warnPercent = 10;
+		public boolean warnSound = true;
+
+		private void fillMissing() {
+			DurabilityConfig defaults = new DurabilityConfig();
+			if (slotCounter == null) {
+				slotCounter = defaults.slotCounter;
+			}
+			if (equipmentHud == null) {
+				equipmentHud = defaults.equipmentHud;
+			}
+			if (hudAnchor == null) {
+				hudAnchor = defaults.hudAnchor;
+			}
+			if (hudText == null) {
+				hudText = defaults.hudText;
+			}
+		}
+	}
+
 	public static IBConfig load(Path path) {
 		IBConfig config = null;
 		if (Files.exists(path)) {
@@ -157,5 +204,9 @@ public class IBConfig {
 			health = new HealthConfig();
 		}
 		health.fillMissing();
+		if (durability == null) {
+			durability = new DurabilityConfig();
+		}
+		durability.fillMissing();
 	}
 }
