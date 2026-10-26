@@ -2,12 +2,12 @@ package net.firstwemine1.indicatorbars.meter.durability;
 
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.audio.SimpleSound;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.SoundEvents;
 
 /**
  * What you wear and hold, tick to tick: plays the warning once when an item wears down past
@@ -15,9 +15,9 @@ import net.minecraft.world.item.ItemStack;
  */
 public class EquipmentTracker {
 	/** The slots the durability HUD lists, top to bottom. */
-	public static final EquipmentSlot[] SLOTS = {
-			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET,
-			EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND};
+	public static final EquipmentSlotType[] SLOTS = {
+			EquipmentSlotType.HEAD, EquipmentSlotType.CHEST, EquipmentSlotType.LEGS, EquipmentSlotType.FEET,
+			EquipmentSlotType.MAINHAND, EquipmentSlotType.OFFHAND};
 	/** A low bell, so it reads as a warning. */
 	private static final float WARN_PITCH = 0.6f;
 	private static final float WARN_VOLUME = 0.8f;
@@ -28,7 +28,7 @@ public class EquipmentTracker {
 	private boolean primed;
 
 	public void tick(Minecraft minecraft, DurabilityConfig config) {
-		Player player = minecraft.player;
+		PlayerEntity player = minecraft.player;
 		if (player == null) {
 			reset();
 			return;
@@ -47,7 +47,7 @@ public class EquipmentTracker {
 		}
 		primed = true;
 		if (warn && config.warnSound) {
-			minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BELL, WARN_PITCH, WARN_VOLUME));
+			minecraft.getSoundManager().play(SimpleSound.forUI(SoundEvents.NOTE_BLOCK_BELL, WARN_PITCH, WARN_VOLUME));
 		}
 	}
 

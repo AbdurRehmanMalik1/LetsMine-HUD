@@ -7,7 +7,6 @@ modId="$mod_id"
 version="$version"
 displayName="$mod_name"
 authors="$author_name"
-displayTest="$forge_displaytest_value"
 description="$mod_description"
 
 [[dependencies.${mod_id}]]

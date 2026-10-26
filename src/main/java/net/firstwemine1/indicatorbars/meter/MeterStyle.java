@@ -1,7 +1,6 @@
 package net.firstwemine1.indicatorbars.meter;
 
-import net.minecraft.util.FastColor;
-import net.minecraft.util.Mth;
+import net.minecraft.util.math.MathHelper;
 
 /** Colours and helpers shared by every meter. */
 public final class MeterStyle {
@@ -22,7 +21,7 @@ public final class MeterStyle {
 
 	/** {@code value / max}, clamped to 0..1; 0 when there is no maximum. */
 	public static float fraction(float value, float max) {
-		return max > 0 ? Mth.clamp(value / max, 0, 1) : 0;
+		return max > 0 ? MathHelper.clamp(value / max, 0, 1) : 0;
 	}
 
 	/** Each channel of {@code from} moved {@code t} of the way to {@code to} (later versions: {@code ARGB.srgbLerp}). */
@@ -38,7 +37,7 @@ public final class MeterStyle {
 
 	/** {@code color} with its alpha scaled by {@code alpha} (26.x has this as {@code ARGB.multiplyAlpha}). */
 	public static int multiplyAlpha(int color, float alpha) {
-		int a = Math.round(FastColor.ARGB32.alpha(color) * alpha);
+		int a = Math.round((color >>> 24) * alpha);
 		return a << 24 | color & 0xFFFFFF;
 	}
 }

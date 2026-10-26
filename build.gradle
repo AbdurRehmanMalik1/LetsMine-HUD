@@ -13,7 +13,6 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
 
 minecraft {
     mappings channel: 'official', version: minecraft_version
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
     copyIdeResources = true
 
     // Client-only mod: no server run.
@@ -92,8 +91,5 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-sourceSets.each {
-    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
-    it.output.resourcesDir = dir
-    it.java.destinationDirectory = dir
-}
+// Classes and resources stay in Gradle's separate output folders: Forge 1.16 takes the first dev mod path
+// as resources and scans only the others for classes, so one shared folder would hide every class.

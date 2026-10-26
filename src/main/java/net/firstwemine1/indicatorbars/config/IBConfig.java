@@ -6,6 +6,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,9 +17,9 @@ import com.google.gson.JsonParseException;
 import com.google.gson.annotations.SerializedName;
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.firstwemine1.indicatorbars.meter.HudAnchor;
-import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.entity.EntityType;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.registry.Registry;
 
 /**
  * {@code config/indicatorbars.json}, one section per meter. Created with defaults on first launch; edit it
@@ -78,7 +79,7 @@ public class IBConfig {
 		public HealthText healthText = HealthText.FRACTION;
 
 		/** Entity type ids that never get a bar or the panel. */
-		public List<String> blacklist = new ArrayList<>(List.of("minecraft:armor_stand"));
+		public List<String> blacklist = new ArrayList<>(Arrays.asList("minecraft:armor_stand"));
 
 		/** Resolved on first use: other mods register their entity types after this config loads. */
 		private transient Set<EntityType<?>> blacklistedTypes;

@@ -2,10 +2,10 @@ package net.firstwemine1.indicatorbars.platform;
 
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraft.client.gui.screen.MainMenuScreen;
+import net.minecraft.client.gui.screen.inventory.InventoryScreen;
+import net.minecraft.util.ScreenShotHelper;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 
@@ -31,8 +31,8 @@ final class DevQuickPlay {
 		if (world == null) {
 			return;
 		}
-		bus.addListener((ScreenEvent.InitScreenEvent.Post event) -> {
-			if (event.getScreen() instanceof TitleScreen && !opened) {
+		bus.addListener((GuiScreenEvent.InitGuiEvent.Post event) -> {
+			if (event.getGui() instanceof MainMenuScreen && !opened) {
 				opened = true;
 				Minecraft minecraft = Minecraft.getInstance();
 				// Not from inside the title screen's own init.
@@ -54,8 +54,8 @@ final class DevQuickPlay {
 		}
 		ticks++;
 		if (ticks == STEPS[0] || ticks == STEPS[2] || ticks == STEPS[4] || ticks == STEPS[6]) {
-			Screenshot.grab(minecraft.gameDirectory, minecraft.getMainRenderTarget(),
-					message -> IndicatorBars.LOGGER.info("Test scene: {}", message.getString()));
+			ScreenShotHelper.grab(minecraft.gameDirectory, minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight(),
+					minecraft.getMainRenderTarget(), message -> IndicatorBars.LOGGER.info("Test scene: {}", message.getString()));
 		} else if (ticks == STEPS[1]) {
 			minecraft.player.chat("/function ib_test:portrait/pig");
 		} else if (ticks == STEPS[3]) {

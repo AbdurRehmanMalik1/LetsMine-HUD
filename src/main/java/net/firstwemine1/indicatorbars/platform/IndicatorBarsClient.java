@@ -3,20 +3,19 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.inventory.Slot;
-import net.minecraftforge.client.ClientRegistry;
+import net.minecraft.inventory.container.Slot;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.ContainerScreenEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.GuiContainerEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.client.event.RenderNameplateEvent;
-import net.minecraftforge.client.gui.ForgeIngameGui;
-import net.minecraftforge.client.gui.OverlayRegistry;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -33,21 +32,23 @@ final class IndicatorBarsClient {
 		modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(() -> {
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_BARS);
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_DURABILITY);
-			OverlayRegistry.registerOverlayTop("Indicator Bars target panel",
-					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHud(poseStack, partialTick));
-			OverlayRegistry.registerOverlayTop("Indicator Bars durability",
-					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderEquipmentHud(poseStack, partialTick));
-			// 1.18.2 has no item decorations: the hotbar's numbers are an overlay drawn over the hotbar...
-			OverlayRegistry.registerOverlayAbove(ForgeIngameGui.HOTBAR_ELEMENT, "Indicator Bars hotbar counters",
-					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHotbarCounters(width, height));
 		}));
 
 		IEventBus bus = MinecraftForge.EVENT_BUS;
 		DevQuickPlay.register(bus);
-		// ...and inventory screens draw theirs over each slot, in the screen's own coordinates.
-		bus.addListener((ContainerScreenEvent.DrawForeground event) -> {
+		// 1.16.5 has no overlay registry: everything is drawn after the whole HUD, including the hotbar
+		// counters (there are no item decorations either).
+		bus.addListener((RenderGameOverlayEvent.Post event) -> {
+			if (event.getType() == RenderGameOverlayEvent.ElementType.ALL) {
+				ClientHooks.renderHud(event.getMatrixStack(), event.getPartialTicks());
+				ClientHooks.renderEquipmentHud(event.getMatrixStack(), event.getPartialTicks());
+				ClientHooks.renderHotbarCounters(event.getWindow().getGuiScaledWidth(), event.getWindow().getGuiScaledHeight());
+			}
+		});
+		// Inventory screens draw their numbers over each slot, in the screen's own coordinates.
+		bus.addListener((GuiContainerEvent.DrawForeground event) -> {
 			Minecraft minecraft = Minecraft.getInstance();
-			for (Slot slot : event.getContainerScreen().getMenu().slots) {
+			for (Slot slot : event.getGuiContainer().getMenu().slots) {
 				ClientHooks.renderSlot(minecraft.font, slot.getItem(), slot.x, slot.y, CONTAINER_BLIT_OFFSET);
 			}
 		});
@@ -57,16 +58,16 @@ final class IndicatorBarsClient {
 			}
 		});
 		bus.addListener((ClientPlayerNetworkEvent.LoggedOutEvent event) -> ClientHooks.reset());
-		// Entities render between the solid blocks and the weather.
-		bus.addListener((RenderLevelStageEvent event) -> {
-			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+		// No level render stages yet: a frame starts with the level, and RenderWorldLastEvent ends it.
+		// GUI entity previews come after, so they get no bar.
+		bus.addListener((TickEvent.RenderTickEvent event) -> {
+			if (event.phase == TickEvent.Phase.START) {
 				ClientHooks.setRenderingLevel(true);
-			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
-				ClientHooks.setRenderingLevel(false);
 			}
 		});
+		bus.addListener((RenderWorldLastEvent event) -> ClientHooks.setRenderingLevel(false));
 		bus.addListener(EventPriority.NORMAL, false, RenderLivingEvent.Post.class,
-				event -> ClientHooks.renderBar(event.getEntity(), event.getPoseStack(), event.getMultiBufferSource()));
+				event -> ClientHooks.renderBar(event.getEntity(), event.getMatrixStack(), event.getBuffers()));
 		bus.addListener((RenderNameplateEvent event) -> {
 			if (TargetPanelRenderer.drawingPortrait()) {
 				event.setResult(Event.Result.DENY);

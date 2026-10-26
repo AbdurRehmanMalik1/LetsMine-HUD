@@ -1,11 +1,12 @@
 package net.firstwemine1.indicatorbars.meter.health;
 
+import javax.annotation.Nullable;
+
 import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 
 /** Whether a mob gets a floating bar this frame. Checked before anything is drawn. */
 public final class BarVisibility {
@@ -13,7 +14,7 @@ public final class BarVisibility {
 	}
 
 	public static boolean shouldShow(LivingEntity entity, Minecraft minecraft, HealthConfig config, @Nullable LivingEntity target) {
-		Player player = minecraft.player;
+		PlayerEntity player = minecraft.player;
 		Entity camera = minecraft.getCameraEntity();
 		if (!config.showBars || player == null || camera == null) {
 			return false;
@@ -23,17 +24,20 @@ public final class BarVisibility {
 			return false;
 		}
 		// Sneaking players hide their bar, as vanilla hides their name tag.
-		if (entity instanceof Player other && (!config.showForPlayers || other.isDiscrete())) {
+		if (entity instanceof PlayerEntity && (!config.showForPlayers || entity.isDiscrete())) {
 			return false;
 		}
 		if (config.isBlacklisted(entity.getType())
 				|| entity.distanceToSqr(camera) > config.barDistance * config.barDistance) {
 			return false;
 		}
-		return switch (config.barMode) {
-			case ALL -> true;
-			case DAMAGED -> entity.getHealth() < entity.getMaxHealth();
-			case TARGET -> entity == target;
-		};
+		switch (config.barMode) {
+			case DAMAGED:
+				return entity.getHealth() < entity.getMaxHealth();
+			case TARGET:
+				return entity == target;
+			default:
+				return true;
+		}
 	}
 }

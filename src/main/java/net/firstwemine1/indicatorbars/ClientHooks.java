@@ -2,8 +2,7 @@ package net.firstwemine1.indicatorbars;
 
 import java.nio.file.Path;
 
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.matrix.MatrixStack;
 import net.firstwemine1.indicatorbars.config.IBConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
@@ -15,13 +14,14 @@ import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.text.TranslationTextComponent;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Everything the loader-specific code calls. Each loader's entrypoint only turns its own events into
@@ -29,9 +29,9 @@ import net.minecraft.world.item.ItemStack;
  * version.
  */
 public final class ClientHooks {
-	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H,
+	public static final KeyBinding TOGGLE_BARS = new KeyBinding("key.indicatorbars.toggle_bars", GLFW.GLFW_KEY_H,
 			"key.categories." + IndicatorBars.MOD_ID);
-	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J,
+	public static final KeyBinding TOGGLE_DURABILITY = new KeyBinding("key.indicatorbars.toggle_durability", GLFW.GLFW_KEY_J,
 			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
@@ -56,7 +56,7 @@ public final class ClientHooks {
 			config.health.showBars = !config.health.showBars;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.displayClientMessage(new TranslatableComponent(
+				minecraft.player.displayClientMessage(new TranslationTextComponent(
 						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
 			}
 		}
@@ -64,7 +64,7 @@ public final class ClientHooks {
 			config.durability.showNumbers = !config.durability.showNumbers;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.displayClientMessage(new TranslatableComponent(
+				minecraft.player.displayClientMessage(new TranslationTextComponent(
 						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"), true);
 			}
 		}
@@ -80,8 +80,8 @@ public final class ClientHooks {
 		renderingLevel = rendering;
 	}
 
-	/** A living entity was just rendered; the pose stack is at its feet. */
-	public static void renderBar(LivingEntity entity, PoseStack poseStack, MultiBufferSource buffers) {
+	/** A living entity was just rendered; the matrix stack is at its feet. */
+	public static void renderBar(LivingEntity entity, MatrixStack poseStack, IRenderTypeBuffer buffers) {
 		if (!renderingLevel || !BarVisibility.shouldShow(entity, Minecraft.getInstance(), config.health, TARGET.target())) {
 			return;
 		}
@@ -91,7 +91,7 @@ public final class ClientHooks {
 	}
 
 	/** The mob health panel. */
-	public static void renderHud(PoseStack poseStack, float partialTick) {
+	public static void renderHud(MatrixStack poseStack, float partialTick) {
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
@@ -103,16 +103,16 @@ public final class ClientHooks {
 	}
 
 	/** The durability column. */
-	public static void renderEquipmentHud(PoseStack poseStack, float partialTick) {
+	public static void renderEquipmentHud(MatrixStack poseStack, float partialTick) {
 		EquipmentHudRenderer.render(poseStack, config.durability, partialTick);
 	}
 
-	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
-	public static void renderSlot(Font font, ItemStack stack, int x, int y, float blitOffset) {
+	/** An item was drawn in a GUI slot (inventory screens). */
+	public static void renderSlot(FontRenderer font, ItemStack stack, int x, int y, float blitOffset) {
 		SlotCounterRenderer.render(font, stack, x, y, blitOffset, config.durability);
 	}
 
-	/** The hotbar's slot counters (1.18.2 has no item decorations). */
+	/** The hotbar's slot counters (1.16.5 has no item decorations). */
 	public static void renderHotbarCounters(int width, int height) {
 		SlotCounterRenderer.renderHotbar(width, height, config.durability);
 	}
