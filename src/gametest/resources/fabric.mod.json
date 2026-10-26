@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "healthindicator-test",
+	"version": "1.0.0",
+	"name": "Health Indicator Tests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"net.firstwemine1.healthindicator.test.HealthIndicatorClientGameTest"
+		]
+	},
+	"depends": {
+		"healthindicator": "*"
+	}
+}

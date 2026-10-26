@@ -1,0 +1,60 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+	// Client-only mod: everything lives in one source set, and only the client run is useful.
+	runs {
+		client {
+			runDir "run/client"
+			programArgs "--username", "Player1"
+		}
+	}
+}
+
+fabricApi {
+	// In-game check: ./gradlew runClientGameTest opens a flat world, spawns cows and screenshots the
+	// bars and the panel into build/run/clientGameTest/screenshots. Source in src/gametest.
+	configureTests {
+		createSourceSet = true
+		modId = "healthindicator-test"
+		enableGameTests = false
+		eula = true
+	}
+}
+
+dependencies {
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}

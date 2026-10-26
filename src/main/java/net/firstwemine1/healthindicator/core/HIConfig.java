@@ -1,0 +1,150 @@
+package net.firstwemine1.healthindicator.core;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import com.google.gson.annotations.SerializedName;
+import net.firstwemine1.healthindicator.HealthIndicator;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntityType;
+
+/**
+ * {@code config/healthindicator.json}. Created with defaults on first launch; edit it and restart.
+ * The toggle key flips {@link #showBars} in game and saves it.
+ */
+public class HIConfig {
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+	public enum BarMode {
+		@SerializedName("all") ALL,
+		/** Only mobs below full health. */
+		@SerializedName("damaged") DAMAGED,
+		/** Only the mob in the target panel. */
+		@SerializedName("target") TARGET
+	}
+
+	public enum PanelAnchor {
+		@SerializedName("top_left") TOP_LEFT,
+		@SerializedName("top_center") TOP_CENTER,
+		@SerializedName("top_right") TOP_RIGHT,
+		@SerializedName("bottom_left") BOTTOM_LEFT,
+		@SerializedName("bottom_right") BOTTOM_RIGHT
+	}
+
+	public enum HealthText {
+		/** {@code 6/10} */
+		@SerializedName("fraction") FRACTION,
+		/** {@code 60%} */
+		@SerializedName("percent") PERCENT,
+		/** {@code 3/5}, counted in hearts */
+		@SerializedName("hearts") HEARTS,
+		@SerializedName("off") OFF
+	}
+
+	public enum BarColor {
+		@SerializedName("green") GREEN,
+		/** Red at low health, through yellow, to green at full. */
+		@SerializedName("gradient") GRADIENT,
+		/** Red for hostile mobs, yellow for neutral ones, green for passive ones. */
+		@SerializedName("hostility") HOSTILITY
+	}
+
+	public boolean showBars = true;
+	public BarMode barMode = BarMode.ALL;
+	/** Blocks. */
+	public double barDistance = 24;
+	public boolean seeThrough = false;
+	public double barScale = 1.0;
+	public BarColor barColor = BarColor.GREEN;
+	public boolean showForPlayers = true;
+
+	public boolean showPanel = true;
+	public PanelAnchor panelAnchor = PanelAnchor.TOP_LEFT;
+	public int panelX = 4;
+	public int panelY = 4;
+	public double panelLingerSeconds = 2;
+	/** Blocks. */
+	public double targetRange = 32;
+	public HealthText healthText = HealthText.FRACTION;
+
+	/** Entity type ids that never get a bar or the panel. */
+	public List<String> blacklist = new ArrayList<>(List.of("minecraft:armor_stand"));
+
+	private transient Path path;
+	private transient Set<EntityType<?>> blacklistedTypes = Set.of();
+
+	public static HIConfig load(Path path) {
+		HIConfig config = null;
+		if (Files.exists(path)) {
+			try (Reader reader = Files.newBufferedReader(path)) {
+				config = GSON.fromJson(reader, HIConfig.class);
+			} catch (IOException | JsonParseException e) {
+				HealthIndicator.LOGGER.error("Could not read {}, using defaults", path, e);
+			}
+		}
+		if (config == null) {
+			config = new HIConfig();
+		}
+		config.path = path;
+		config.fillMissing();
+		config.save();
+		return config;
+	}
+
+	public void save() {
+		try {
+			Files.createDirectories(path.getParent());
+			try (Writer writer = Files.newBufferedWriter(path)) {
+				GSON.toJson(this, writer);
+			}
+		} catch (IOException e) {
+			HealthIndicator.LOGGER.error("Could not write {}", path, e);
+		}
+	}
+
+	public boolean isBlacklisted(EntityType<?> type) {
+		return blacklistedTypes.contains(type);
+	}
+
+	/** Gson leaves unknown enum names and missing lists as null: put the defaults back. */
+	private void fillMissing() {
+		HIConfig defaults = new HIConfig();
+		if (barMode == null) {
+			barMode = defaults.barMode;
+		}
+		if (barColor == null) {
+			barColor = defaults.barColor;
+		}
+		if (panelAnchor == null) {
+			panelAnchor = defaults.panelAnchor;
+		}
+		if (healthText == null) {
+			healthText = defaults.healthText;
+		}
+		if (blacklist == null) {
+			blacklist = defaults.blacklist;
+		}
+
+		Set<EntityType<?>> types = new HashSet<>();
+		for (String entry : blacklist) {
+			Identifier id = Identifier.tryParse(entry);
+			if (id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
+				types.add(BuiltInRegistries.ENTITY_TYPE.getValue(id));
+			} else {
+				HealthIndicator.LOGGER.warn("Unknown entity type '{}' in the blacklist of {}", entry, path);
+			}
+		}
+		blacklistedTypes = types;
+	}
+}
