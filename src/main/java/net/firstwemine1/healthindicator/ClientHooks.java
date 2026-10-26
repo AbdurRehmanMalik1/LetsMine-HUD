@@ -8,30 +8,31 @@ import net.firstwemine1.healthindicator.core.BarStyle;
 import net.firstwemine1.healthindicator.core.BarVisibility;
 import net.firstwemine1.healthindicator.core.HIConfig;
 import net.firstwemine1.healthindicator.core.TargetTracker;
-import net.firstwemine1.healthindicator.render.HealthBarState;
 import net.firstwemine1.healthindicator.render.TargetPanelRenderer;
 import net.firstwemine1.healthindicator.render.WorldBarRenderer;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 
 /**
- * Everything the loader-specific code calls. Each loader's entrypoint and mixins only turn its own
- * events into these calls, so this class and everything under it is the same on every loader.
+ * Everything the loader-specific code calls. Each loader's entrypoint only turns its own events into
+ * these calls, so this class and everything under it is the same on every loader of this Minecraft
+ * version.
  */
 public final class ClientHooks {
-	/** Registered by each loader's entrypoint: vanilla's registry on Fabric, an event on NeoForge. */
-	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(HealthIndicator.id(HealthIndicator.MOD_ID));
-	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.healthindicator.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
+	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.healthindicator.toggle_bars", InputConstants.KEY_H,
+			"key.categories." + HealthIndicator.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static HIConfig config;
+	/**
+	 * True while the level renders. GUI entity previews (inventory, horse screen, our own portrait)
+	 * fire the same render events, and get no bar.
+	 */
+	private static boolean renderingLevel;
 
 	private ClientHooks() {
 	}
@@ -46,8 +47,8 @@ public final class ClientHooks {
 			config.showBars = !config.showBars;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.sendOverlayMessage(Component.translatable(
-						config.showBars ? "healthindicator.bars.on" : "healthindicator.bars.off"));
+				minecraft.player.displayClientMessage(Component.translatable(
+						config.showBars ? "healthindicator.bars.on" : "healthindicator.bars.off"), true);
 			}
 		}
 		if (minecraft.level == null) {
@@ -57,34 +58,28 @@ public final class ClientHooks {
 		TARGET.tick(minecraft, config);
 	}
 
-	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
-	public static void extractBar(LivingEntity entity, LivingEntityRenderState state) {
-		HealthBarState.Bar bar = ((HealthBarState) state).healthindicator$bar();
-		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target());
-		if (bar.visible) {
-			bar.fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
-			bar.color = BarStyle.fillColor(entity, bar.fraction, config.barColor);
-		}
+	public static void setRenderingLevel(boolean rendering) {
+		renderingLevel = rendering;
 	}
 
-	/** A living entity was submitted for drawing; the pose stack is at its feet. */
-	public static void submitBar(LivingEntityRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-		HealthBarState.Bar bar = ((HealthBarState) state).healthindicator$bar();
-		// GUI previews (inventory, horse screen, our own portrait) draw with a camera that was never set up.
-		if (bar.visible && camera.initialized) {
-			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config);
+	/** A living entity was just rendered; the pose stack is at its feet. */
+	public static void renderBar(LivingEntity entity, PoseStack poseStack, MultiBufferSource buffers) {
+		if (!renderingLevel || !BarVisibility.shouldShow(entity, Minecraft.getInstance(), config, TARGET.target())) {
+			return;
 		}
+		float fraction = BarStyle.fraction(entity.getHealth(), entity.getMaxHealth());
+		int color = BarStyle.fillColor(entity, fraction, config.barColor);
+		WorldBarRenderer.render(entity, fraction, color, poseStack, buffers, config);
 	}
 
-	public static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+	public static void renderHud(GuiGraphics graphics, float partialTick) {
 		LivingEntity target = TARGET.target();
 		if (!config.showPanel || target == null) {
 			return;
 		}
-		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 		float alpha = TARGET.alpha(config, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.extract(graphics, target, alpha, partialTick, config);
+			TargetPanelRenderer.render(graphics, target, alpha, config);
 		}
 	}
 

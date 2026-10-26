@@ -1,6 +1,7 @@
 package net.firstwemine1.healthindicator.core;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -9,7 +10,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * The mob shown in the target panel: whatever the crosshair is on, out to {@link HIConfig#targetRange}
@@ -30,7 +31,7 @@ public class TargetTracker {
 	/** 1 while the panel is fully shown, falling to 0 as it fades out. */
 	public float alpha(HIConfig config, float partialTick) {
 		float fading = ticksAway + partialTick - lingerTicks(config);
-		return Math.clamp(1 - fading / FADE_TICKS, 0, 1);
+		return Mth.clamp(1 - fading / FADE_TICKS, 0, 1);
 	}
 
 	public void tick(Minecraft minecraft, HIConfig config) {

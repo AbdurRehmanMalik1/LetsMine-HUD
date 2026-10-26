@@ -1,24 +1,53 @@
 package net.firstwemine1.healthindicator.platform;
 
 import net.firstwemine1.healthindicator.ClientHooks;
-import net.firstwemine1.healthindicator.HealthIndicator;
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.KeyMapping;
+import net.firstwemine1.healthindicator.render.TargetPanelRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.RenderLivingEvent;
+import net.minecraftforge.client.event.RenderNameTagEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.loading.FMLPaths;
 
-/** Fabric entrypoint. The floating bars hook in through {@code LivingEntityRendererMixin}. */
-public class HealthIndicatorClient implements ClientModInitializer {
-	@Override
-	public void onInitializeClient() {
-		ClientHooks.init(FabricLoader.getInstance().getConfigDir());
-		KeyMapping.Category.register(ClientHooks.KEY_CATEGORY.id());
-		KeyMappingHelper.registerKeyMapping(ClientHooks.TOGGLE_BARS);
-		ClientTickEvents.END_CLIENT_TICK.register(ClientHooks::tick);
-		HudElementRegistry.addLast(HealthIndicator.id("target_panel"), ClientHooks::extractHud);
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientHooks.reset());
+/** Client setup: turns Forge events into {@link ClientHooks} calls. Bars use events, not mixins. */
+final class HealthIndicatorClient {
+	private HealthIndicatorClient() {
+	}
+
+	static void init(IEventBus modBus) {
+		ClientHooks.init(FMLPaths.CONFIGDIR.get());
+		modBus.addListener((RegisterKeyMappingsEvent event) -> event.register(ClientHooks.TOGGLE_BARS));
+		modBus.addListener((RegisterGuiOverlaysEvent event) -> event.registerAboveAll("target_panel",
+				(gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick)));
+
+		IEventBus bus = MinecraftForge.EVENT_BUS;
+		bus.addListener((TickEvent.ClientTickEvent event) -> {
+			if (event.phase == TickEvent.Phase.END) {
+				ClientHooks.tick(Minecraft.getInstance());
+			}
+		});
+		bus.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
+		// Entities render between the solid blocks and the end of the level.
+		bus.addListener((RenderLevelStageEvent event) -> {
+			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+				ClientHooks.setRenderingLevel(true);
+			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+				ClientHooks.setRenderingLevel(false);
+			}
+		});
+		bus.addListener(EventPriority.NORMAL, false, RenderLivingEvent.Post.class,
+				event -> ClientHooks.renderBar(event.getEntity(), event.getPoseStack(), event.getMultiBufferSource()));
+		bus.addListener((RenderNameTagEvent event) -> {
+			if (TargetPanelRenderer.drawingPortrait()) {
+				event.setResult(Event.Result.DENY);
+			}
+		});
 	}
 }

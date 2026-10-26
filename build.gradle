@@ -1,60 +1,93 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'net.minecraftforge.gradle' version '6.0.16'
 }
 
-loom {
-	// Client-only mod: everything lives in one source set, and only the client run is useful.
-	runs {
-		client {
-			runDir "run/client"
-			programArgs "--username", "Player1"
-		}
-	}
+version = "${minecraft_version}-${mod_version}"
+group = mod_group
+
+base {
+    archivesName = mod_id
 }
 
-fabricApi {
-	// In-game check: ./gradlew runClientGameTest opens a flat world, spawns cows and screenshots the
-	// bars and the panel into build/run/clientGameTest/screenshots. Source in src/gametest.
-	configureTests {
-		createSourceSet = true
-		modId = "healthindicator-test"
-		enableGameTests = false
-		eula = true
-	}
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version)
+
+minecraft {
+    mappings channel: 'official', version: minecraft_version
+    copyIdeResources = true
+
+    // Client-only mod: no server run.
+    runs {
+        client {
+            workingDirectory project.file('run/client')
+            property 'forge.logging.console.level', 'info'
+            args '--username', 'Player1'
+            // ./gradlew runClient -PquickPlay="World" opens that world straight away.
+            if (project.hasProperty('quickPlay')) {
+                args '--quickPlaySingleplayer', project.property('quickPlay')
+            }
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
 }
 
 dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 }
 
-processResources {
-	def version = project.version
-	inputs.property "version", version
+repositories {
+    // ForgeGradle 6.0.16's artifact downloader fails to resolve the Forge userdev artifact when an
+    // exclusiveContent{} repository is declared (see Weaponry's forge/1.20.1).
+    mavenCentral()
+    maven {
+        name = 'Forge'
+        url = 'https://maven.minecraftforge.net/'
+    }
+    maven {
+        name = 'Minecraft libraries'
+        url = 'https://libraries.minecraft.net'
+    }
+}
 
-	filesMatching("fabric.mod.json") {
-		expand "version": version
-	}
+tasks.named('processResources', ProcessResources) {
+    def properties = [
+            mod_id                 : mod_id,
+            version                : version,
+            mod_name               : mod_name,
+            mod_description        : mod_description,
+            mod_license            : mod_license,
+            author_name            : author_name,
+            minecraft_min_version  : minecraft_min_version,
+            minecraft_max_version  : minecraft_max_version,
+            forge_min_version      : forge_min_version,
+            forge_displaytest_value: forge_displaytest_value,
+            forge_minecraft_side   : forge_minecraft_side
+    ]
+
+    inputs.properties properties
+
+    filesMatching('META-INF/mods.toml') {
+        expand properties
+    }
+}
+
+tasks.named('jar', Jar) {
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${mod_id}" }
+    }
+
+    finalizedBy 'reobfJar'
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
+    options.encoding = 'UTF-8'
 }
 
-java {
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
-}
-
-jar {
-	def projectName = project.name
-	inputs.property "projectName", projectName
-
-	from("LICENSE") {
-		rename { "${it}_$projectName"}
-	}
+sourceSets.each {
+    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+    it.output.resourcesDir = dir
+    it.java.destinationDirectory = dir
 }

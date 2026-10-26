@@ -1,40 +1,25 @@
 # gradle
-
 .gradle/
 build/
 out/
 classes/
 
-# eclipse
+# ForgeGradle runs
+run/
+run-data/
 
-*.launch
-
-# idea
-
+# IDEs
 .idea/
 *.iml
 *.ipr
 *.iws
-
-# vscode
-
-.settings/
 .vscode/
-bin/
+.settings/
 .classpath
 .project
+bin/
 
-# macos
+# OS
+Thumbs.db
+.DS_Store
 
-*.DS_Store
-
-# fabric
-
-run/
-
-# java
-
-hs_err_*.log
-replay_*.log
-*.hprof
-*.jfr

@@ -1,6 +1,7 @@
 package net.firstwemine1.healthindicator.core;
 
-import net.minecraft.util.ARGB;
+import net.minecraft.util.FastColor;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.monster.Enemy;
@@ -19,16 +20,22 @@ public final class BarStyle {
 	}
 
 	public static float fraction(float health, float maxHealth) {
-		return maxHealth > 0 ? Math.clamp(health / maxHealth, 0, 1) : 0;
+		return maxHealth > 0 ? Mth.clamp(health / maxHealth, 0, 1) : 0;
 	}
 
 	public static int fillColor(LivingEntity entity, float fraction, HIConfig.BarColor mode) {
 		return switch (mode) {
 			case GREEN -> GREEN;
 			case GRADIENT -> fraction < 0.5f
-					? ARGB.srgbLerp(fraction * 2, RED, YELLOW)
-					: ARGB.srgbLerp((fraction - 0.5f) * 2, YELLOW, GREEN);
+					? FastColor.ARGB32.lerp(fraction * 2, RED, YELLOW)
+					: FastColor.ARGB32.lerp((fraction - 0.5f) * 2, YELLOW, GREEN);
 			case HOSTILITY -> entity instanceof Enemy ? RED : entity instanceof NeutralMob ? YELLOW : GREEN;
 		};
+	}
+
+	/** {@code color} with its alpha scaled by {@code alpha} (26.x has this as {@code ARGB.multiplyAlpha}). */
+	public static int multiplyAlpha(int color, float alpha) {
+		int a = Math.round(FastColor.ARGB32.alpha(color) * alpha);
+		return a << 24 | color & 0xFFFFFF;
 	}
 }

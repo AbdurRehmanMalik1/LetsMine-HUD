@@ -1,21 +1,27 @@
 package net.firstwemine1.healthindicator.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.firstwemine1.healthindicator.core.BarStyle;
 import net.firstwemine1.healthindicator.core.HIConfig;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.util.FastColor;
+import org.joml.Matrix4f;
 
 /**
  * The bar floating above a mob. Drawn like a name tag: facing the camera, at name-tag scale, so it
- * shrinks with distance. Both quads are text backgrounds, the same render type as a name tag's dark
- * box; the fill uses the polygon offset vanilla uses to lift text above its background.
+ * shrinks with distance, with the render type of a name tag's dark box. 1.20.1 has no polygon-offset
+ * mode for these quads, so none of them overlap: a border, then the fill and the empty part side by
+ * side.
  */
 public final class WorldBarRenderer {
+	/** Vanilla's name tag scale ({@code EntityRenderer.NAMETAG_SCALE} on later versions). */
+	private static final float NAMETAG_SCALE = 0.025f;
 	/** In name-tag units: 40 is one block. */
 	private static final float WIDTH = 40;
 	private static final float HEIGHT = 3;
@@ -28,24 +34,52 @@ public final class WorldBarRenderer {
 	private WorldBarRenderer() {
 	}
 
-	public static void submit(HealthBarState.Bar bar, LivingEntityRenderState state, PoseStack poseStack,
-			SubmitNodeCollector collector, CameraRenderState camera, HIConfig config) {
+	/** Called with the pose stack at the mob's feet, right after vanilla renders it. */
+	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, HIConfig config) {
+		Minecraft minecraft = Minecraft.getInstance();
 		poseStack.pushPose();
-		float lift = LIFT + (state.nameTag != null ? NAME_TAG_CLEARANCE : 0);
-		poseStack.translate(0, state.boundingBoxHeight + lift, 0);
-		poseStack.rotate(camera.orientation);
-		float scale = EntityRenderer.NAMETAG_SCALE * (float) config.barScale;
-		poseStack.scale(scale, -scale, scale);
+		float lift = LIFT + (nameTagShown(entity, minecraft) ? NAME_TAG_CLEARANCE : 0);
+		poseStack.translate(0, entity.getBbHeight() + lift, 0);
+		poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
+		float scale = NAMETAG_SCALE * (float) config.barScale;
+		poseStack.scale(-scale, -scale, scale);
 
-		Font.DisplayMode back = config.seeThrough ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		Font.DisplayMode front = config.seeThrough ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.POLYGON_OFFSET;
+		Matrix4f pose = poseStack.last().pose();
+		VertexConsumer consumer = buffers.getBuffer(config.seeThrough ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground());
 		float left = -WIDTH / 2;
-		collector.submitTextBackground(poseStack, left - BORDER, -BORDER, -left + BORDER, HEIGHT + BORDER,
-				BarStyle.BACKGROUND, back, LightCoordsUtil.FULL_BRIGHT);
-		if (bar.fraction > 0) {
-			collector.submitTextBackground(poseStack, left, 0, left + WIDTH * bar.fraction, HEIGHT,
-					bar.color, front, LightCoordsUtil.FULL_BRIGHT);
+		float right = WIDTH / 2;
+		float split = left + WIDTH * fraction;
+		quad(consumer, pose, left - BORDER, -BORDER, right + BORDER, 0, BarStyle.BACKGROUND);
+		quad(consumer, pose, left - BORDER, HEIGHT, right + BORDER, HEIGHT + BORDER, BarStyle.BACKGROUND);
+		quad(consumer, pose, left - BORDER, 0, left, HEIGHT, BarStyle.BACKGROUND);
+		quad(consumer, pose, right, 0, right + BORDER, HEIGHT, BarStyle.BACKGROUND);
+		if (fraction > 0) {
+			quad(consumer, pose, left, 0, split, HEIGHT, color);
+		}
+		if (fraction < 1) {
+			quad(consumer, pose, split, 0, right, HEIGHT, BarStyle.BACKGROUND);
 		}
 		poseStack.popPose();
+	}
+
+	/** Same corner order as vanilla's text background, so the quad faces the camera. */
+	private static void quad(VertexConsumer consumer, Matrix4f pose, float x0, float y0, float x1, float y1, int color) {
+		int r = FastColor.ARGB32.red(color);
+		int g = FastColor.ARGB32.green(color);
+		int b = FastColor.ARGB32.blue(color);
+		int a = FastColor.ARGB32.alpha(color);
+		consumer.vertex(pose, x0, y1, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x1, y1, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x1, y0, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x0, y0, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+	}
+
+	/**
+	 * Close to {@code LivingEntityRenderer.shouldShowName}, which is protected. Later versions read the
+	 * answer from the render state instead.
+	 */
+	private static boolean nameTagShown(LivingEntity entity, Minecraft minecraft) {
+		return entity instanceof Player || entity.isCustomNameVisible()
+				|| entity.hasCustomName() && entity == minecraft.getEntityRenderDispatcher().crosshairPickEntity;
 	}
 }

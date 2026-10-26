@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[$forge_min_version,)"
+license="$mod_license"
+
+[[mods]]
+modId="$mod_id"
+version="$version"
+displayName="$mod_name"
+authors="$author_name"
+displayTest="$forge_displaytest_value"
+description="$mod_description"
+
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="[$forge_min_version,)"
+    ordering="NONE"
+    side="$forge_minecraft_side"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[$minecraft_min_version,$minecraft_max_version)"
+    ordering="NONE"
+    side="$forge_minecraft_side"
