@@ -1,0 +1,7 @@
+# Portrait check: one pig baby straight ahead, crosshair on its middle.
+# A flat, empty patch in front, so terrain never blocks the view.
+fill ~-8 ~-1 ~-2 ~8 ~-1 ~24 grass_block
+fill ~-8 ~ ~-2 ~8 ~6 ~24 air
+kill @e[type=!player,distance=..40]
+tp @s ~ ~ ~ 0 19.2
+summon pig ~ ~ ~4 {NoAI:1b,PersistenceRequired:1b,Rotation:[90f,0f],Age:-24000}
