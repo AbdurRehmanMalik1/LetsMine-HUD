@@ -83,8 +83,8 @@ public final class PortraitFit {
 
 		// The GUI rotation, then the same steps as LivingEntityRenderer.submit for a standing mob.
 		PoseStack poseStack = new PoseStack();
-		poseStack.rotate(rotation);
-		poseStack.rotateDegrees(Axis.YP, 180 - state.bodyRot);
+		poseStack.mulPose(rotation);
+		poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.bodyRot));
 		poseStack.scale(-1, -1, 1);
 		renderer.indicatorbars$scale(state, poseStack);
 		poseStack.translate(0, MODEL_OFFSET, 0);
