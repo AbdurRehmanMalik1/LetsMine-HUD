@@ -21,10 +21,10 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -56,16 +56,16 @@ public final class ClientHooks {
 			config.health.showBars = !config.health.showBars;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.sendOverlayMessage(Component.translatable(
-						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"));
+				minecraft.player.displayClientMessage(Component.translatable(
+						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
 			}
 		}
 		while (TOGGLE_DURABILITY.consumeClick()) {
 			config.durability.showNumbers = !config.durability.showNumbers;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.sendOverlayMessage(Component.translatable(
-						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"));
+				minecraft.player.displayClientMessage(Component.translatable(
+						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"), true);
 			}
 		}
 		if (minecraft.level == null) {
@@ -105,7 +105,7 @@ public final class ClientHooks {
 	}
 
 	/** The mob health panel. */
-	public static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+	public static void renderHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
@@ -113,18 +113,18 @@ public final class ClientHooks {
 		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.extract(graphics, target, alpha, partialTick, config.health);
+			TargetPanelRenderer.render(graphics, target, alpha, partialTick, config.health);
 		}
 	}
 
 	/** The durability column. */
-	public static void extractEquipmentHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		EquipmentHudRenderer.extract(graphics, config.durability, deltaTracker.getGameTimeDeltaPartialTick(false));
+	public static void renderEquipmentHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
+		EquipmentHudRenderer.render(graphics, config.durability, deltaTracker.getGameTimeDeltaPartialTick(false));
 	}
 
 	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
-	public static void extractSlot(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y) {
-		SlotCounterRenderer.extract(graphics, font, stack, x, y, config.durability);
+	public static void renderSlot(GuiGraphics graphics, Font font, ItemStack stack, int x, int y) {
+		SlotCounterRenderer.render(graphics, font, stack, x, y, config.durability);
 	}
 
 	/** Disconnected or left the world: forget the target and the equipment. */

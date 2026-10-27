@@ -28,8 +28,8 @@ public final class IndicatorBarsClient {
 			event.register(ClientHooks.TOGGLE_DURABILITY);
 		});
 		modBus.addListener((RegisterGuiLayersEvent event) -> {
-			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::extractHud);
-			event.registerAboveAll(IndicatorBars.id("durability_hud"), ClientHooks::extractEquipmentHud);
+			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::renderHud);
+			event.registerAboveAll(IndicatorBars.id("durability_hud"), ClientHooks::renderEquipmentHud);
 		});
 		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 		NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientHooks.tick(Minecraft.getInstance()));
@@ -43,7 +43,7 @@ public final class IndicatorBarsClient {
 	 */
 	private static void registerSlotCounter(RegisterItemDecorationsEvent event) {
 		IItemDecorator counter = (graphics, font, stack, x, y) -> {
-			ClientHooks.extractSlot(graphics, font, stack, x, y);
+			ClientHooks.renderSlot(graphics, font, stack, x, y);
 			return false;
 		};
 		for (Item item : BuiltInRegistries.ITEM) {

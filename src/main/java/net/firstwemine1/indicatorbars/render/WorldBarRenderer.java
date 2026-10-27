@@ -8,8 +8,8 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.LightTexture;
 
 /**
  * The bar floating above a mob. Drawn like a name tag: facing the camera, at name-tag scale, so it
@@ -62,9 +62,9 @@ public final class WorldBarRenderer {
 
 	/** Same corner order as vanilla's text background, so the quad faces the camera. */
 	private static void quad(VertexConsumer consumer, PoseStack.Pose pose, float x0, float y0, float x1, float y1, int color) {
-		consumer.addVertex(pose, x0, y1, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		consumer.addVertex(pose, x1, y1, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		consumer.addVertex(pose, x1, y0, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
-		consumer.addVertex(pose, x0, y0, 0).setColor(color).setLight(LightCoordsUtil.FULL_BRIGHT);
+		consumer.addVertex(pose, x0, y1, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
+		consumer.addVertex(pose, x1, y1, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
+		consumer.addVertex(pose, x1, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
+		consumer.addVertex(pose, x0, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
 	}
 }

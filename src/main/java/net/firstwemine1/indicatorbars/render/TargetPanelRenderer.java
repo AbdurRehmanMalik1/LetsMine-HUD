@@ -7,7 +7,7 @@ import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
@@ -49,7 +49,7 @@ public final class TargetPanelRenderer {
 	private TargetPanelRenderer() {
 	}
 
-	public static void extract(GuiGraphicsExtractor graphics, LivingEntity target, float alpha, float partialTick, HealthConfig config) {
+	public static void render(GuiGraphics graphics, LivingEntity target, float alpha, float partialTick, HealthConfig config) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Font font = minecraft.font;
 		Component name = target.getDisplayName();
@@ -61,7 +61,7 @@ public final class TargetPanelRenderer {
 		int y = corner[1];
 
 		graphics.fill(x, y, x + width, y + HEIGHT, ARGB.multiplyAlpha(MeterStyle.PANEL, alpha));
-		graphics.outline(x, y, width, HEIGHT, ARGB.multiplyAlpha(MeterStyle.FRAME, alpha));
+		graphics.renderOutline(x, y, width, HEIGHT, ARGB.multiplyAlpha(MeterStyle.FRAME, alpha));
 
 		int portraitX = x + PADDING;
 		int portraitY = y + PADDING;
@@ -73,7 +73,7 @@ public final class TargetPanelRenderer {
 
 		int textX = portraitX + PORTRAIT + PADDING;
 		int text = ARGB.multiplyAlpha(MeterStyle.TEXT, alpha);
-		graphics.text(font, name, textX, y + PADDING, text);
+		graphics.drawString(font, name, textX, y + PADDING, text);
 
 		float health = Math.max(target.getHealth(), 0);
 		float maxHealth = target.getMaxHealth();
@@ -81,7 +81,7 @@ public final class TargetPanelRenderer {
 		if (healthText != null) {
 			int rowY = y + PADDING + font.lineHeight + 3;
 			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HEART, textX, rowY - 1, HEART_SIZE, HEART_SIZE, ARGB.white(alpha));
-			graphics.text(font, healthText, textX + HEART_SIZE + 2, rowY, text);
+			graphics.drawString(font, healthText, textX + HEART_SIZE + 2, rowY, text);
 		}
 
 		float fraction = MeterStyle.fraction(health, maxHealth);
@@ -97,14 +97,13 @@ public final class TargetPanelRenderer {
 	 * The mob's model, drawn like the player in the inventory screen. Every port changes this method:
 	 * the inventory's entity preview call changes in almost every version.
 	 */
-	private static void portrait(GuiGraphicsExtractor graphics, Minecraft minecraft, LivingEntity target, float partialTick,
+	private static void portrait(GuiGraphics graphics, Minecraft minecraft, LivingEntity target, float partialTick,
 			int x0, int y0, int x1, int y1) {
 		EntityRenderer<? super LivingEntity, ?> renderer = minecraft.getEntityRenderDispatcher().getRenderer(target);
 		EntityRenderState state = renderer.createRenderState(target, partialTick);
 		state.shadowPieces.clear();
 		state.outlineColor = 0;
 		state.nameTag = null;
-		state.scoreText = null;
 		state.leashStates = null;
 		if (state instanceof LivingEntityRenderState living) {
 			living.bodyRot = 180 + PORTRAIT_YAW;
@@ -123,7 +122,7 @@ public final class TargetPanelRenderer {
 		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
 		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
 		PortraitFit.Fit fit = PortraitFit.fit(target, state, rotation, x1 - x0);
-		graphics.entity(state, fit.scale(), fit.translation(), rotation, pitch, x0, y0, x1, y1);
+		graphics.submitEntityRenderState(state, fit.scale(), fit.translation(), rotation, pitch, x0, y0, x1, y1);
 	}
 
 	private static String healthText(float health, float maxHealth, HealthConfig.HealthText mode) {

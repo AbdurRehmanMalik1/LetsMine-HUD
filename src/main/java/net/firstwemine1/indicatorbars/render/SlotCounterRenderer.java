@@ -3,7 +3,7 @@ package net.firstwemine1.indicatorbars.render;
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
 import net.firstwemine1.indicatorbars.meter.durability.Durability;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
 
@@ -17,7 +17,7 @@ public final class SlotCounterRenderer {
 	private SlotCounterRenderer() {
 	}
 
-	public static void extract(GuiGraphicsExtractor graphics, Font font, ItemStack stack, int x, int y, DurabilityConfig config) {
+	public static void render(GuiGraphics graphics, Font font, ItemStack stack, int x, int y, DurabilityConfig config) {
 		if (!config.showNumbers || config.slotCounter == DurabilityConfig.Show.OFF || !Durability.tracked(stack)
 				|| config.slotCounter == DurabilityConfig.Show.DAMAGED && !stack.isDamaged()) {
 			return;
@@ -26,7 +26,7 @@ public final class SlotCounterRenderer {
 		pose.pushMatrix();
 		pose.translate(x + 1, y + 1);
 		pose.scale(SCALE, SCALE);
-		graphics.text(font, Integer.toString(Durability.left(stack)), 0, 0, Durability.color(stack), true);
+		graphics.drawString(font, Integer.toString(Durability.left(stack)), 0, 0, Durability.color(stack), true);
 		pose.popMatrix();
 	}
 }

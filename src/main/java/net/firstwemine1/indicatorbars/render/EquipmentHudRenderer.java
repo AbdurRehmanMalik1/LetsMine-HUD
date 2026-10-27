@@ -9,7 +9,7 @@ import net.firstwemine1.indicatorbars.meter.durability.Durability;
 import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -37,7 +37,7 @@ public final class EquipmentHudRenderer {
 	private EquipmentHudRenderer() {
 	}
 
-	public static void extract(GuiGraphicsExtractor graphics, DurabilityConfig config, float partialTick) {
+	public static void render(GuiGraphics graphics, DurabilityConfig config, float partialTick) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Player player = minecraft.player;
 		if (!config.showNumbers || config.equipmentHud == DurabilityConfig.Show.OFF || player == null || player.isSpectator()) {
@@ -71,11 +71,11 @@ public final class EquipmentHudRenderer {
 			ItemStack stack = rows.get(i);
 			int x = corner[0];
 			int y = corner[1] + i * ROW;
-			graphics.item(stack, x, y);
+			graphics.renderItem(stack, x, y);
 			int color = Durability.low(stack, config.warnPercent)
 					? ARGB.multiplyAlpha(MeterStyle.RED, pulse)
 					: Durability.color(stack);
-			graphics.text(font, Durability.text(stack, config.hudText), x + ICON + TEXT_GAP, y + (ICON - font.lineHeight) / 2 + 1, color, true);
+			graphics.drawString(font, Durability.text(stack, config.hudText), x + ICON + TEXT_GAP, y + (ICON - font.lineHeight) / 2 + 1, color, true);
 		}
 	}
 }
