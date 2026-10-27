@@ -10,7 +10,6 @@ import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
@@ -73,7 +72,7 @@ public final class EquipmentHudRenderer {
 			int y = corner[1] + i * ROW;
 			graphics.renderItem(stack, x, y);
 			int color = Durability.low(stack, config.warnPercent)
-					? ARGB.multiplyAlpha(MeterStyle.RED, pulse)
+					? MeterStyle.multiplyAlpha(MeterStyle.RED, pulse)
 					: Durability.color(stack);
 			graphics.drawString(font, Durability.text(stack, config.hudText), x + ICON + TEXT_GAP, y + (ICON - font.lineHeight) / 2 + 1, color, true);
 		}

@@ -12,7 +12,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Sizes and centres the panel's portrait from the mob's model, not its hitbox: hitboxes are square seen
@@ -98,7 +98,7 @@ public final class PortraitFit {
 			}
 			for (ModelPart.Polygon polygon : cube.polygons) {
 				for (ModelPart.Vertex vertex : polygon.vertices()) {
-					Vector3f point = pose.pose().transformPosition(vertex.worldX(), vertex.worldY(), vertex.worldZ(), new Vector3f());
+					Vector3f point = pose.pose().transformPosition(vertex.pos().x() / 16, vertex.pos().y() / 16, vertex.pos().z() / 16, new Vector3f());
 					bounds[0] = Math.min(bounds[0], point.x);
 					bounds[1] = Math.min(bounds[1], point.y);
 					bounds[2] = Math.max(bounds[2], point.x);

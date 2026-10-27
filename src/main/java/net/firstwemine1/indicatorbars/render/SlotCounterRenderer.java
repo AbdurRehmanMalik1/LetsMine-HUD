@@ -3,9 +3,9 @@ package net.firstwemine1.indicatorbars.render;
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
 import net.firstwemine1.indicatorbars.meter.durability.Durability;
 import net.minecraft.client.gui.Font;
+import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix3x2fStack;
 
 /**
  * Uses left, as a half-size number in the slot's top-left corner, on every damageable item drawn in a
@@ -13,6 +13,8 @@ import org.joml.Matrix3x2fStack;
  */
 public final class SlotCounterRenderer {
 	private static final float SCALE = 0.5f;
+	/** Vanilla draws the stack count this far forward, over the item. */
+	private static final float TEXT_Z = 200;
 
 	private SlotCounterRenderer() {
 	}
@@ -22,11 +24,11 @@ public final class SlotCounterRenderer {
 				|| config.slotCounter == DurabilityConfig.Show.DAMAGED && !stack.isDamaged()) {
 			return;
 		}
-		Matrix3x2fStack pose = graphics.pose();
-		pose.pushMatrix();
-		pose.translate(x + 1, y + 1);
-		pose.scale(SCALE, SCALE);
+		PoseStack pose = graphics.pose();
+		pose.pushPose();
+		pose.translate(x + 1, y + 1, TEXT_Z);
+		pose.scale(SCALE, SCALE, 1);
 		graphics.drawString(font, Integer.toString(Durability.left(stack)), 0, 0, Durability.color(stack), true);
-		pose.popMatrix();
+		pose.popPose();
 	}
 }

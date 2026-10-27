@@ -8,15 +8,17 @@ import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 /**
  * The HUD panel for the targeted mob: a live portrait, its name, a heart with its health, and a bar.
@@ -31,7 +33,7 @@ import org.joml.Quaternionf;
  */
 public final class TargetPanelRenderer {
 	/** Vanilla's heart, so resource packs re-skin it. */
-	private static final Identifier HEART = Identifier.withDefaultNamespace("hud/heart/full");
+	private static final ResourceLocation HEART = ResourceLocation.withDefaultNamespace("hud/heart/full");
 
 	private static final int PADDING = 4;
 	private static final int PORTRAIT = 36;
@@ -41,12 +43,21 @@ public final class TargetPanelRenderer {
 	private static final int HEIGHT = PORTRAIT + 2 * PADDING;
 
 	private static final int PORTRAIT_BACKGROUND = 0x60000000;
+	/** The font draws any colour with alpha below 4 fully opaque, so fading text stops here. */
+	private static final float MIN_TEXT_ALPHA = 0.05f;
 
 	/** Turns the portrait to a three-quarter view. */
 	private static final float PORTRAIT_YAW = 30;
 	private static final float PORTRAIT_PITCH = -10;
 
+	/** True while the portrait draws, so its name tag can be hidden. */
+	private static boolean drawingPortrait;
+
 	private TargetPanelRenderer() {
+	}
+
+	public static boolean drawingPortrait() {
+		return drawingPortrait;
 	}
 
 	public static void render(GuiGraphics graphics, LivingEntity target, float alpha, float partialTick, HealthConfig config) {
@@ -60,27 +71,29 @@ public final class TargetPanelRenderer {
 		int x = corner[0];
 		int y = corner[1];
 
-		graphics.fill(x, y, x + width, y + HEIGHT, ARGB.multiplyAlpha(MeterStyle.PANEL, alpha));
-		graphics.renderOutline(x, y, width, HEIGHT, ARGB.multiplyAlpha(MeterStyle.FRAME, alpha));
+		graphics.fill(x, y, x + width, y + HEIGHT, MeterStyle.multiplyAlpha(MeterStyle.PANEL, alpha));
+		graphics.renderOutline(x, y, width, HEIGHT, MeterStyle.multiplyAlpha(MeterStyle.FRAME, alpha));
 
 		int portraitX = x + PADDING;
 		int portraitY = y + PADDING;
-		graphics.fill(portraitX, portraitY, portraitX + PORTRAIT, portraitY + PORTRAIT, ARGB.multiplyAlpha(PORTRAIT_BACKGROUND, alpha));
+		graphics.fill(portraitX, portraitY, portraitX + PORTRAIT, portraitY + PORTRAIT, MeterStyle.multiplyAlpha(PORTRAIT_BACKGROUND, alpha));
 		// A 3D model can't fade; it goes when the panel is half faded.
 		if (alpha >= 0.5f) {
 			portrait(graphics, minecraft, target, partialTick, portraitX, portraitY, portraitX + PORTRAIT, portraitY + PORTRAIT);
 		}
 
 		int textX = portraitX + PORTRAIT + PADDING;
-		int text = ARGB.multiplyAlpha(MeterStyle.TEXT, alpha);
-		graphics.drawString(font, name, textX, y + PADDING, text);
+		int text = MeterStyle.multiplyAlpha(MeterStyle.TEXT, alpha);
+		if (alpha >= MIN_TEXT_ALPHA) {
+			graphics.drawString(font, name, textX, y + PADDING, text);
+		}
 
 		float health = Math.max(target.getHealth(), 0);
 		float maxHealth = target.getMaxHealth();
 		String healthText = healthText(health, maxHealth, config.healthText);
-		if (healthText != null) {
+		if (healthText != null && alpha >= MIN_TEXT_ALPHA) {
 			int rowY = y + PADDING + font.lineHeight + 3;
-			graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HEART, textX, rowY - 1, HEART_SIZE, HEART_SIZE, ARGB.white(alpha));
+			graphics.blitSprite(RenderType::guiTextured, HEART, textX, rowY - 1, HEART_SIZE, HEART_SIZE, ARGB.white(alpha));
 			graphics.drawString(font, healthText, textX + HEART_SIZE + 2, rowY, text);
 		}
 
@@ -88,41 +101,74 @@ public final class TargetPanelRenderer {
 		int barY = y + HEIGHT - PADDING - BAR_HEIGHT;
 		int barRight = x + width - PADDING;
 		int filled = textX + Math.round((barRight - textX) * fraction);
-		graphics.fill(textX, barY, barRight, barY + BAR_HEIGHT, ARGB.multiplyAlpha(MeterStyle.MISSING, alpha));
+		graphics.fill(textX, barY, barRight, barY + BAR_HEIGHT, MeterStyle.multiplyAlpha(MeterStyle.MISSING, alpha));
 		graphics.fill(textX, barY, filled, barY + BAR_HEIGHT,
-				ARGB.multiplyAlpha(HealthColors.fill(target, fraction, config.barColor), alpha));
+				MeterStyle.multiplyAlpha(HealthColors.fill(target, fraction, config.barColor), alpha));
 	}
 
 	/**
 	 * The mob's model, drawn like the player in the inventory screen. Every port changes this method:
-	 * the inventory's entity preview call changes in almost every version.
+	 * the inventory's entity preview call changes in almost every version. Here it draws the live
+	 * entity, turned for the portrait while it draws; the fit measures a render state made the same way.
 	 */
 	private static void portrait(GuiGraphics graphics, Minecraft minecraft, LivingEntity target, float partialTick,
 			int x0, int y0, int x1, int y1) {
+		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
+		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
+
+		float bodyRot = target.yBodyRot;
+		float bodyRotO = target.yBodyRotO;
+		float yRot = target.getYRot();
+		float yRotO = target.yRotO;
+		float xRot = target.getXRot();
+		float xRotO = target.xRotO;
+		float headRot = target.yHeadRot;
+		float headRotO = target.yHeadRotO;
+		int deathTime = target.deathTime;
+		target.yBodyRot = target.yBodyRotO = 180 + PORTRAIT_YAW;
+		target.setYRot(180 + PORTRAIT_YAW);
+		target.yRotO = target.getYRot();
+		target.setXRot(0);
+		target.xRotO = 0;
+		target.yHeadRot = target.yHeadRotO = target.getYRot();
+		// A dying mob keeps its red tint but doesn't fall over out of the box.
+		target.deathTime = 0;
+		drawingPortrait = true;
+		try {
+			PortraitFit.Fit fit = PortraitFit.fit(target, fitState(minecraft, target, partialTick), rotation, x1 - x0);
+			// The fit is for the mob at its own model size, as the inventory draws it; the live entity
+			// renders at its scale (babies, the scale attribute), so that is divided back out.
+			float entityScale = target.getScale();
+			graphics.enableScissor(x0, y0, x1, y1);
+			InventoryScreen.renderEntityInInventory(graphics, (x0 + x1) / 2f, (y0 + y1) / 2f, fit.scale() / entityScale,
+					new Vector3f(fit.translation()).mul(entityScale), rotation, pitch, target);
+			graphics.disableScissor();
+		} finally {
+			drawingPortrait = false;
+			target.yBodyRot = bodyRot;
+			target.yBodyRotO = bodyRotO;
+			target.setYRot(yRot);
+			target.yRotO = yRotO;
+			target.setXRot(xRot);
+			target.xRotO = xRotO;
+			target.yHeadRot = headRot;
+			target.yHeadRotO = headRotO;
+			target.deathTime = deathTime;
+		}
+	}
+
+	/** The render state the fit measures: the turned entity, standing still, at its own model size. */
+	private static EntityRenderState fitState(Minecraft minecraft, LivingEntity target, float partialTick) {
 		EntityRenderer<? super LivingEntity, ?> renderer = minecraft.getEntityRenderDispatcher().getRenderer(target);
 		EntityRenderState state = renderer.createRenderState(target, partialTick);
-		state.shadowPieces.clear();
-		state.outlineColor = 0;
-		state.nameTag = null;
-		state.leashStates = null;
 		if (state instanceof LivingEntityRenderState living) {
-			living.bodyRot = 180 + PORTRAIT_YAW;
-			living.yRot = 0;
-			living.xRot = 0;
-			// Standing still, so the fit measured once stays right. A dying mob keeps its red tint but
-			// doesn't fall over out of the box.
 			living.walkAnimationPos = 0;
 			living.walkAnimationSpeed = 0;
-			living.deathTime = 0;
-			// Babies and scaled mobs are drawn at their own size, as the inventory does.
 			living.boundingBoxWidth /= living.scale;
 			living.boundingBoxHeight /= living.scale;
 			living.scale = 1;
 		}
-		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
-		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
-		PortraitFit.Fit fit = PortraitFit.fit(target, state, rotation, x1 - x0);
-		graphics.submitEntityRenderState(state, fit.scale(), fit.translation(), rotation, pitch, x0, y0, x1, y1);
+		return state;
 	}
 
 	private static String healthText(float health, float maxHealth, HealthConfig.HealthText mode) {
