@@ -34,7 +34,7 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
-			world.getClientLevel().waitForChunksRender();
+			world.getClientWorld().waitForChunksRender();
 			TestServerContext server = world.getServer();
 			server.runCommand("time set noon");
 			// Not peaceful, which would remove the ghast and the slime.
