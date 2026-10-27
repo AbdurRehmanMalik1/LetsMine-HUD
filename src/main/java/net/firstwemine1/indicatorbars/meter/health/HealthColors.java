@@ -12,12 +12,15 @@ public final class HealthColors {
 	}
 
 	public static int fill(LivingEntity entity, float fraction, IBConfig.HealthConfig.BarColor mode) {
-		return switch (mode) {
-			case GREEN -> MeterStyle.GREEN;
-			case GRADIENT -> fraction < 0.5f
-					? MeterStyle.lerp(fraction * 2, MeterStyle.RED, MeterStyle.YELLOW)
-					: MeterStyle.lerp((fraction - 0.5f) * 2, MeterStyle.YELLOW, MeterStyle.GREEN);
-			case HOSTILITY -> entity instanceof Enemy ? MeterStyle.RED : entity instanceof NeutralMob ? MeterStyle.YELLOW : MeterStyle.GREEN;
-		};
+		switch (mode) {
+			case GRADIENT:
+				return fraction < 0.5f
+						? MeterStyle.lerp(fraction * 2, MeterStyle.RED, MeterStyle.YELLOW)
+						: MeterStyle.lerp((fraction - 0.5f) * 2, MeterStyle.YELLOW, MeterStyle.GREEN);
+			case HOSTILITY:
+				return entity instanceof Enemy ? MeterStyle.RED : entity instanceof NeutralMob ? MeterStyle.YELLOW : MeterStyle.GREEN;
+			default:
+				return MeterStyle.GREEN;
+		}
 	}
 }

@@ -12,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
@@ -88,12 +87,11 @@ public final class TargetPanelRenderer {
 		String healthText = healthText(health, maxHealth, config.healthText);
 		if (healthText != null && alpha >= MIN_TEXT_ALPHA) {
 			int rowY = y + PADDING + font.lineHeight + 3;
-			RenderSystem.setShader(GameRenderer::getPositionTexShader);
-			RenderSystem.setShaderTexture(0, ICONS);
+			minecraft.getTextureManager().bind(ICONS);
 			RenderSystem.enableBlend();
-			RenderSystem.setShaderColor(1, 1, 1, alpha);
+			RenderSystem.color4f(1, 1, 1, alpha);
 			GuiComponent.blit(poseStack, textX, rowY - 1, 0, HEART_U, HEART_V, HEART_SIZE, HEART_SIZE, 256, 256);
-			RenderSystem.setShaderColor(1, 1, 1, 1);
+			RenderSystem.color4f(1, 1, 1, 1);
 			font.drawShadow(poseStack, healthText, textX + HEART_SIZE + 2, rowY, text);
 		}
 
@@ -117,7 +115,7 @@ public final class TargetPanelRenderer {
 
 	/**
 	 * The mob's model, drawn like the player in the inventory screen. Every port changes this method:
-	 * the inventory's entity preview call changes in almost every version. On 1.19.2 it takes the angle
+	 * the inventory's entity preview call changes in almost every version. On 1.16.5 it takes the angle
 	 * as a mouse offset and turns the live entity itself; {@link PortraitFit#MOUSE_X} picks the offset.
 	 */
 	private static void portrait(LivingEntity target, int x0, int y0, int x1, int y1) {
@@ -132,7 +130,7 @@ public final class TargetPanelRenderer {
 			double scale = window.getGuiScale();
 			RenderSystem.enableScissor((int) (x0 * scale), (int) (window.getHeight() - y1 * scale),
 					(int) ((x1 - x0) * scale), (int) ((y1 - y0) * scale));
-			InventoryScreen.renderEntityInInventory(fit.x(), fit.y(), fit.scale(), PortraitFit.MOUSE_X, PortraitFit.MOUSE_Y, target);
+			InventoryScreen.renderEntityInInventory(fit.x, fit.y, fit.scale, PortraitFit.MOUSE_X, PortraitFit.MOUSE_Y, target);
 			RenderSystem.disableScissor();
 		} finally {
 			drawingPortrait = false;
@@ -141,12 +139,16 @@ public final class TargetPanelRenderer {
 	}
 
 	private static String healthText(float health, float maxHealth, HealthConfig.HealthText mode) {
-		return switch (mode) {
-			case FRACTION -> number(health) + "/" + number(maxHealth);
-			case PERCENT -> Math.round(MeterStyle.fraction(health, maxHealth) * 100) + "%";
-			case HEARTS -> number(health / 2) + "/" + number(maxHealth / 2);
-			case OFF -> null;
-		};
+		switch (mode) {
+			case FRACTION:
+				return number(health) + "/" + number(maxHealth);
+			case PERCENT:
+				return Math.round(MeterStyle.fraction(health, maxHealth) * 100) + "%";
+			case HEARTS:
+				return number(health / 2) + "/" + number(maxHealth / 2);
+			default:
+				return null;
+		}
 	}
 
 	/** Whole numbers without a decimal point, others to one place: 6, 6.5. */

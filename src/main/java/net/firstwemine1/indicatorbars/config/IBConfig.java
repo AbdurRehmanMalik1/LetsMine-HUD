@@ -6,6 +6,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -78,7 +79,7 @@ public class IBConfig {
 		public HealthText healthText = HealthText.FRACTION;
 
 		/** Entity type ids that never get a bar or the panel. */
-		public List<String> blacklist = new ArrayList<>(List.of("minecraft:armor_stand"));
+		public List<String> blacklist = new ArrayList<>(Arrays.asList("minecraft:armor_stand"));
 
 		/** Resolved on first use: other mods register their entity types after this config loads. */
 		private transient Set<EntityType<?>> blacklistedTypes;

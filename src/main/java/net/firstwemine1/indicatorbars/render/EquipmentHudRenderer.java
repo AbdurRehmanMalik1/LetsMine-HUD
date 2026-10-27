@@ -65,7 +65,7 @@ public final class EquipmentHudRenderer {
 		int[] corner = config.hudAnchor.place(minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight(),
 				width, height, config.hudX, config.hudY, offhand && rightHanded, offhand && !rightHanded);
 
-		float pulse = 0.55f + 0.45f * Mth.sin((player.tickCount + partialTick) * Mth.TWO_PI / PULSE_TICKS);
+		float pulse = 0.55f + 0.45f * Mth.sin((player.tickCount + partialTick) * (float) (Math.PI * 2) / PULSE_TICKS);
 		for (int i = 0; i < rows.size(); i++) {
 			ItemStack stack = rows.get(i);
 			int x = corner[0];

@@ -23,17 +23,20 @@ public final class BarVisibility {
 			return false;
 		}
 		// Sneaking players hide their bar, as vanilla hides their name tag.
-		if (entity instanceof Player other && (!config.showForPlayers || other.isDiscrete())) {
+		if (entity instanceof Player && (!config.showForPlayers || entity.isDiscrete())) {
 			return false;
 		}
 		if (config.isBlacklisted(entity.getType())
 				|| entity.distanceToSqr(camera) > config.barDistance * config.barDistance) {
 			return false;
 		}
-		return switch (config.barMode) {
-			case ALL -> true;
-			case DAMAGED -> entity.getHealth() < entity.getMaxHealth();
-			case TARGET -> entity == target;
-		};
+		switch (config.barMode) {
+			case DAMAGED:
+				return entity.getHealth() < entity.getMaxHealth();
+			case TARGET:
+				return entity == target;
+			default:
+				return true;
+		}
 	}
 }

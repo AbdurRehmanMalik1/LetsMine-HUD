@@ -28,19 +28,22 @@ public enum HudAnchor {
 	public int[] place(int guiWidth, int guiHeight, int width, int height, int dx, int dy,
 			boolean offhandLeft, boolean offhandRight) {
 		int centre = guiWidth / 2;
-		int hotbarBottom = guiHeight - (HOTBAR_HEIGHT - height) / 2 - height;
-		return switch (this) {
-			case TOP_LEFT -> new int[] {dx, dy};
-			case TOP_CENTER -> new int[] {(guiWidth - width) / 2 + dx, dy};
-			case TOP_RIGHT -> new int[] {guiWidth - width - dx, dy};
-			case BOTTOM_LEFT -> new int[] {dx, guiHeight - height - dy};
-			case BOTTOM_RIGHT -> new int[] {guiWidth - width - dx, guiHeight - height - dy};
-			case HOTBAR_LEFT -> new int[] {
-					centre - HOTBAR_HALF_WIDTH - HOTBAR_GAP - (offhandLeft ? OFFHAND_SLOT : 0) - width - dx,
-					Math.min(hotbarBottom, guiHeight - height) - dy};
-			case HOTBAR_RIGHT -> new int[] {
-					centre + HOTBAR_HALF_WIDTH + HOTBAR_GAP + (offhandRight ? OFFHAND_SLOT : 0) + dx,
-					Math.min(hotbarBottom, guiHeight - height) - dy};
-		};
+		int hotbarY = Math.min(guiHeight - (HOTBAR_HEIGHT - height) / 2 - height, guiHeight - height) - dy;
+		switch (this) {
+			case TOP_LEFT:
+				return new int[] {dx, dy};
+			case TOP_CENTER:
+				return new int[] {(guiWidth - width) / 2 + dx, dy};
+			case TOP_RIGHT:
+				return new int[] {guiWidth - width - dx, dy};
+			case BOTTOM_LEFT:
+				return new int[] {dx, guiHeight - height - dy};
+			case BOTTOM_RIGHT:
+				return new int[] {guiWidth - width - dx, guiHeight - height - dy};
+			case HOTBAR_LEFT:
+				return new int[] {centre - HOTBAR_HALF_WIDTH - HOTBAR_GAP - (offhandLeft ? OFFHAND_SLOT : 0) - width - dx, hotbarY};
+			default:
+				return new int[] {centre + HOTBAR_HALF_WIDTH + HOTBAR_GAP + (offhandRight ? OFFHAND_SLOT : 0) + dx, hotbarY};
+		}
 	}
 }

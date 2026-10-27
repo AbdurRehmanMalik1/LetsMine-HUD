@@ -2,13 +2,11 @@ package net.firstwemine1.indicatorbars.platform.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.ClientHooks;
-import net.firstwemine1.indicatorbars.render.PortraitRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -17,18 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * The floating bars: drawn right after vanilla renders the mob, inside the mob's own render call. Full
  * descriptors because the generic methods also have bridge methods. Also hides the name tag in the
- * panel's portrait and lends the scale hook to its fit.
+ * panel's portrait.
  */
 @Mixin(LivingEntityRenderer.class)
-abstract class LivingEntityRendererMixin implements PortraitRenderer {
-	@Shadow
-	protected abstract void scale(LivingEntity entity, PoseStack poseStack, float partialTick);
-
-	@Override
-	public void indicatorbars$scale(LivingEntity entity, PoseStack poseStack, float partialTick) {
-		scale(entity, poseStack, partialTick);
-	}
-
+abstract class LivingEntityRendererMixin {
 	@Inject(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
 			at = @At("TAIL"))
 	private void indicatorbars$renderBar(LivingEntity entity, float yaw, float partialTick, PoseStack poseStack, MultiBufferSource buffers,

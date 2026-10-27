@@ -21,11 +21,13 @@ import org.jetbrains.annotations.Nullable;
 public class TargetTracker {
 	private static final int FADE_TICKS = 5;
 
-	private @Nullable LivingEntity target;
+	@Nullable
+	private LivingEntity target;
 	/** Ticks since the crosshair was last on the target. */
 	private int ticksAway;
 
-	public @Nullable LivingEntity target() {
+	@Nullable
+	public LivingEntity target() {
 		return target;
 	}
 
@@ -43,7 +45,7 @@ public class TargetTracker {
 		} else if (target != null) {
 			ticksAway++;
 			// A dying mob stays on the panel at 0 health until its body disappears.
-			if (ticksAway > lingerTicks(config) + FADE_TICKS || target.isRemoved() || target.level != minecraft.level) {
+			if (ticksAway > lingerTicks(config) + FADE_TICKS || target.removed || target.level != minecraft.level) {
 				reset();
 			}
 		}
@@ -58,15 +60,18 @@ public class TargetTracker {
 		return (int) Math.round(config.panelLingerSeconds * 20);
 	}
 
-	private static @Nullable LivingEntity pick(Minecraft minecraft, HealthConfig config) {
+	@Nullable
+	private static LivingEntity pick(Minecraft minecraft, HealthConfig config) {
 		Entity camera = minecraft.getCameraEntity();
 		Player player = minecraft.player;
 		if (camera == null || player == null || minecraft.level == null) {
 			return null;
 		}
-		if (minecraft.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof LivingEntity living
-				&& targetable(living, player, config)) {
-			return living;
+		if (minecraft.hitResult instanceof EntityHitResult) {
+			Entity hit = ((EntityHitResult) minecraft.hitResult).getEntity();
+			if (hit instanceof LivingEntity && targetable((LivingEntity) hit, player, config)) {
+				return (LivingEntity) hit;
+			}
 		}
 
 		// Past vanilla's reach: stop at the first block in the way.
@@ -80,8 +85,8 @@ public class TargetTracker {
 		Vec3 end = eye.add(look.scale(range));
 		AABB searchArea = camera.getBoundingBox().expandTowards(look.scale(range)).inflate(1);
 		EntityHitResult hit = ProjectileUtil.getEntityHitResult(camera, eye, end, searchArea,
-				entity -> entity instanceof LivingEntity living && !entity.isSpectator() && entity.isPickable()
-						&& targetable(living, player, config),
+				entity -> entity instanceof LivingEntity && !entity.isSpectator() && entity.isPickable()
+						&& targetable((LivingEntity) entity, player, config),
 				range * range);
 		return hit != null ? (LivingEntity) hit.getEntity() : null;
 	}

@@ -1,9 +1,8 @@
 {
 	"required": true,
 	"package": "net.firstwemine1.indicatorbars.platform.mixin",
-	"compatibilityLevel": "JAVA_17",
+	"compatibilityLevel": "JAVA_8",
 	"client": [
-		"AgeableListModelMixin",
 		"ItemRendererMixin",
 		"LivingEntityRendererMixin"
 	],
