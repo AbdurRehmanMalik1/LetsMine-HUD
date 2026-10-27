@@ -61,18 +61,17 @@ git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
-## Building and testing
+## Building and testing (this branch: Fabric 1.21.1)
 
 ```
 ./gradlew build                # jar in build/libs
 ./gradlew runClient            # play
-./gradlew runClientGameTest    # test scenes, screenshots in build/run/clientGameTest/screenshots
 ```
 
-The game test screenshots three scenes in a flat world: the reference image (a herd of cows, the one
-ahead hurt to 6/10, first and third person), a portrait lineup (pig, piglet, cow, chicken, horse,
-sheep, spider, wolf, ghast, slime), and worn armor and tools (the durability column, hotbar and
-inventory screen). Nothing is compared automatically: look at them.
+Fabric API has no client game test before 1.21.4, so check by eye in a 1.21.1 world: cows at different
+health (one named), a pig and a piglet, a horse and a ghast for the portrait, and worn armor and tools
+for the durability column and slot counters. On a fresh run directory, set `onboardAccessibility:false`
+in `run/client/options.txt` first.
 
 ## Licence
 
