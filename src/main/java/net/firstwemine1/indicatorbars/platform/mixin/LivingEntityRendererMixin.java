@@ -3,50 +3,43 @@ package net.firstwemine1.indicatorbars.platform.mixin;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.PortraitRenderer;
-import net.minecraft.client.model.EntityModel;
+import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The floating bars: copy health into the render state while it is extracted, then draw the bar
- * right after vanilla renders the mob, inside the mob's own render call. Full descriptors because
- * the generic methods also have bridge methods. Also lends the model and scale hook to the portrait.
+ * The floating bars: drawn right after vanilla renders the mob, inside the mob's own render call. Full
+ * descriptors because the generic methods also have bridge methods. Also hides the name tag in the
+ * panel's portrait and lends the scale hook to its fit.
  */
 @Mixin(LivingEntityRenderer.class)
 abstract class LivingEntityRendererMixin implements PortraitRenderer {
 	@Shadow
-	protected EntityModel<?> model;
-
-	@Shadow
-	protected abstract void scale(LivingEntityRenderState state, PoseStack poseStack);
+	protected abstract void scale(LivingEntity entity, PoseStack poseStack, float partialTick);
 
 	@Override
-	public EntityModel<?> indicatorbars$model() {
-		return model;
+	public void indicatorbars$scale(LivingEntity entity, PoseStack poseStack, float partialTick) {
+		scale(entity, poseStack, partialTick);
 	}
 
-	@Override
-	public void indicatorbars$scale(LivingEntityRenderState state, PoseStack poseStack) {
-		scale(state, poseStack);
-	}
-
-	@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;F)V",
+	@Inject(method = "render(Lnet/minecraft/world/entity/LivingEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
 			at = @At("TAIL"))
-	private void indicatorbars$extractBar(LivingEntity entity, LivingEntityRenderState state, float partialTicks, CallbackInfo ci) {
-		ClientHooks.extractBar(entity, state);
+	private void indicatorbars$renderBar(LivingEntity entity, float yaw, float partialTick, PoseStack poseStack, MultiBufferSource buffers,
+			int light, CallbackInfo ci) {
+		ClientHooks.renderBar(entity, poseStack, buffers);
 	}
 
-	@Inject(method = "render(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
-			at = @At("TAIL"))
-	private void indicatorbars$renderBar(LivingEntityRenderState state, PoseStack poseStack, MultiBufferSource buffers, int light,
-			CallbackInfo ci) {
-		ClientHooks.renderBar(this, state, poseStack, buffers);
+	@Inject(method = "shouldShowName(Lnet/minecraft/world/entity/LivingEntity;)Z", at = @At("HEAD"), cancellable = true)
+	private void indicatorbars$hidePortraitName(LivingEntity entity, CallbackInfoReturnable<Boolean> cir) {
+		if (TargetPanelRenderer.drawingPortrait()) {
+			cir.setReturnValue(false);
+		}
 	}
 }

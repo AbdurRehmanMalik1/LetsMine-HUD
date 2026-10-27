@@ -3,8 +3,8 @@
 	"package": "net.firstwemine1.indicatorbars.platform.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"LivingEntityRendererMixin",
-		"LivingEntityRenderStateMixin"
+		"AgeableListModelMixin",
+		"LivingEntityRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

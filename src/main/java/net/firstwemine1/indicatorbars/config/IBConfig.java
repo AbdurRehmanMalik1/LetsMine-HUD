@@ -95,7 +95,7 @@ public class IBConfig {
 			for (String entry : blacklist) {
 				ResourceLocation id = ResourceLocation.tryParse(entry);
 				if (id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
-					types.add(BuiltInRegistries.ENTITY_TYPE.getValue(id));
+					types.add(BuiltInRegistries.ENTITY_TYPE.get(id));
 				} else {
 					IndicatorBars.LOGGER.warn("Unknown entity type '{}' in the health blacklist", entry);
 				}
