@@ -10,11 +10,12 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.util.FastColor;
 import org.joml.Matrix4f;
 
 /**
  * The bar floating above a mob. Drawn like a name tag: facing the camera, at name-tag scale, so it
- * shrinks with distance, with the render type of a name tag's dark box. There is no polygon-offset
+ * shrinks with distance, with the render type of a name tag's dark box. 1.20.1 has no polygon-offset
  * mode for these quads, so none of them overlap: a border, then the fill and the empty part side by
  * side.
  */
@@ -41,7 +42,7 @@ public final class WorldBarRenderer {
 		poseStack.translate(0, entity.getBbHeight() + lift, 0);
 		poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
 		float scale = NAMETAG_SCALE * (float) config.barScale;
-		poseStack.scale(scale, -scale, scale);
+		poseStack.scale(-scale, -scale, scale);
 
 		Matrix4f pose = poseStack.last().pose();
 		VertexConsumer consumer = buffers.getBuffer(config.seeThrough ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground());
@@ -63,10 +64,14 @@ public final class WorldBarRenderer {
 
 	/** Same corner order as vanilla's text background, so the quad faces the camera. */
 	private static void quad(VertexConsumer consumer, Matrix4f pose, float x0, float y0, float x1, float y1, int color) {
-		consumer.addVertex(pose, x0, y1, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
-		consumer.addVertex(pose, x1, y1, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
-		consumer.addVertex(pose, x1, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
-		consumer.addVertex(pose, x0, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
+		int r = FastColor.ARGB32.red(color);
+		int g = FastColor.ARGB32.green(color);
+		int b = FastColor.ARGB32.blue(color);
+		int a = FastColor.ARGB32.alpha(color);
+		consumer.vertex(pose, x0, y1, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x1, y1, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x1, y0, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
+		consumer.vertex(pose, x0, y0, 0).color(r, g, b, a).uv2(LightTexture.FULL_BRIGHT).endVertex();
 	}
 
 	/**

@@ -1,7 +1,7 @@
 {
 	"required": true,
 	"package": "net.firstwemine1.indicatorbars.platform.mixin",
-	"compatibilityLevel": "JAVA_21",
+	"compatibilityLevel": "JAVA_17",
 	"client": [
 		"AgeableListModelMixin",
 		"GuiGraphicsMixin",

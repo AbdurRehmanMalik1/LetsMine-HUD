@@ -15,7 +15,6 @@ import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -26,8 +25,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Everything the loader-specific code calls. Each loader's entrypoint and mixins only turn its own
- * events into these calls, so this class and everything under it is the same on every loader.
+ * Everything the loader-specific code calls. Each loader's entrypoint only turns its own events into
+ * these calls, so this class and everything under it is the same on every loader of this Minecraft
+ * version.
  */
 public final class ClientHooks {
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H,
@@ -40,7 +40,7 @@ public final class ClientHooks {
 	private static IBConfig config;
 	/**
 	 * True while the level renders. GUI entity previews (inventory, horse screen, our own portrait)
-	 * run the same renderer, and get no bar.
+	 * fire the same render events, and get no bar.
 	 */
 	private static boolean renderingLevel;
 
@@ -92,12 +92,11 @@ public final class ClientHooks {
 	}
 
 	/** The mob health panel. */
-	public static void renderHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
+	public static void renderHud(GuiGraphics graphics, float partialTick) {
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
 		}
-		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
 			TargetPanelRenderer.render(graphics, target, alpha, config.health);
@@ -105,8 +104,8 @@ public final class ClientHooks {
 	}
 
 	/** The durability column. */
-	public static void renderEquipmentHud(GuiGraphics graphics, DeltaTracker deltaTracker) {
-		EquipmentHudRenderer.render(graphics, config.durability, deltaTracker.getGameTimeDeltaPartialTick(false));
+	public static void renderEquipmentHud(GuiGraphics graphics, float partialTick) {
+		EquipmentHudRenderer.render(graphics, config.durability, partialTick);
 	}
 
 	/** An item was drawn in a GUI slot (hotbar, inventory screens). */

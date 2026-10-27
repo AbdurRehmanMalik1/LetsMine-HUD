@@ -14,7 +14,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 /**
  * The HUD panel for the targeted mob: a live portrait, its name, a heart with its health, and a bar.
@@ -28,8 +27,10 @@ import org.joml.Vector3f;
  * </pre>
  */
 public final class TargetPanelRenderer {
-	/** Vanilla's heart, so resource packs re-skin it. */
-	private static final ResourceLocation HEART = ResourceLocation.withDefaultNamespace("hud/heart/full");
+	/** Vanilla's heart, so resource packs re-skin it. Before 1.20.2 it is a region of icons.png. */
+	private static final ResourceLocation ICONS = new ResourceLocation("textures/gui/icons.png");
+	private static final int HEART_U = 52;
+	private static final int HEART_V = 0;
 
 	private static final int PADDING = 4;
 	private static final int PORTRAIT = 36;
@@ -91,7 +92,7 @@ public final class TargetPanelRenderer {
 			int rowY = y + PADDING + font.lineHeight + 3;
 			RenderSystem.enableBlend();
 			RenderSystem.setShaderColor(1, 1, 1, alpha);
-			graphics.blitSprite(HEART, textX, rowY - 1, HEART_SIZE, HEART_SIZE);
+			graphics.blit(ICONS, textX, rowY - 1, HEART_U, HEART_V, HEART_SIZE, HEART_SIZE);
 			RenderSystem.setShaderColor(1, 1, 1, 1);
 			graphics.drawString(font, healthText, textX + HEART_SIZE + 2, rowY, text);
 		}
@@ -108,43 +109,36 @@ public final class TargetPanelRenderer {
 	/**
 	 * The mob's model, drawn like the player in the inventory screen. Every port changes this method:
 	 * the inventory's entity preview call changes in almost every version. Before render states it
-	 * draws the live entity, turned for the portrait while it draws.
+	 * draws the live entity, so its rotations are set for the portrait and put back afterwards.
 	 */
 	private static void portrait(GuiGraphics graphics, LivingEntity target, int x0, int y0, int x1, int y1) {
 		Quaternionf pitch = new Quaternionf().rotateX(PORTRAIT_PITCH * ((float) Math.PI / 180));
 		Quaternionf rotation = new Quaternionf().rotateZ((float) Math.PI).mul(pitch);
 
 		float bodyRot = target.yBodyRot;
-		float bodyRotO = target.yBodyRotO;
 		float yRot = target.getYRot();
-		float yRotO = target.yRotO;
 		float xRot = target.getXRot();
-		float xRotO = target.xRotO;
 		float headRot = target.yHeadRot;
 		float headRotO = target.yHeadRotO;
 		int deathTime = target.deathTime;
-		target.yBodyRot = target.yBodyRotO = 180 + PORTRAIT_YAW;
+		target.yBodyRot = 180 + PORTRAIT_YAW;
 		target.setYRot(180 + PORTRAIT_YAW);
-		target.yRotO = target.getYRot();
 		target.setXRot(0);
-		target.xRotO = 0;
-		target.yHeadRot = target.yHeadRotO = target.getYRot();
+		target.yHeadRot = target.getYRot();
+		target.yHeadRotO = target.getYRot();
 		// A dying mob keeps its red tint but doesn't fall over out of the box.
 		target.deathTime = 0;
 		drawingPortrait = true;
 		try {
 			PortraitFit.Fit fit = PortraitFit.fit(target, rotation, x0, y0, x1, y1);
 			graphics.enableScissor(x0, y0, x1, y1);
-			InventoryScreen.renderEntityInInventory(graphics, fit.x(), fit.y(), fit.scale(), new Vector3f(), rotation, pitch, target);
+			InventoryScreen.renderEntityInInventory(graphics, fit.x(), fit.y(), fit.scale(), rotation, pitch, target);
 			graphics.disableScissor();
 		} finally {
 			drawingPortrait = false;
 			target.yBodyRot = bodyRot;
-			target.yBodyRotO = bodyRotO;
 			target.setYRot(yRot);
-			target.yRotO = yRotO;
 			target.setXRot(xRot);
-			target.xRotO = xRotO;
 			target.yHeadRot = headRot;
 			target.yHeadRotO = headRotO;
 			target.deathTime = deathTime;

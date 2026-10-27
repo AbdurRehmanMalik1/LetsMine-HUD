@@ -69,8 +69,6 @@ public final class PortraitFit {
 		// The GUI rotation, then the same steps as LivingEntityRenderer.render for a standing mob.
 		PoseStack poseStack = new PoseStack();
 		poseStack.mulPose(rotation);
-		float entityScale = target.getScale();
-		poseStack.scale(entityScale, entityScale, entityScale);
 		poseStack.mulPose(Axis.YP.rotationDegrees(180 - target.yBodyRot));
 		poseStack.scale(-1, -1, 1);
 		((PortraitRenderer) renderer).indicatorbars$scale(target, poseStack, 1);
