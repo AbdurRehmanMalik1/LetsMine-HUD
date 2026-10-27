@@ -61,18 +61,20 @@ git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
-## Building and testing
+## Building and testing (this branch: Fabric 1.20.1)
 
 ```
 ./gradlew build                # jar in build/libs
 ./gradlew runClient            # play
-./gradlew runClientGameTest    # test scenes, screenshots in build/run/clientGameTest/screenshots
 ```
 
-The game test screenshots three scenes in a flat world: the reference image (a herd of cows, the one
-ahead hurt to 6/10, first and third person), a portrait lineup (pig, piglet, cow, chicken, horse,
-sheep, spider, wolf, ghast, slime), and worn armor and tools (the durability column, hotbar and
-inventory screen). Nothing is compared automatically: look at them.
+Fabric API has no client game test before 1.21.4. `testing/ib_test` is a datapack that builds the same
+scene: copy it into a 1.20.1 world's `datapacks/` folder and open the world. The first time a player joins,
+it sets noon, faces them south and summons the cows (the one ahead at 6/10, a calf, "Daisy" at 3/10).
+Take a screenshot with F2. With cheats on, `/function ib_test:portrait/<mob>` (`pig`, `pig_baby`, `cow`,
+`chicken`, `horse`, `sheep`, `spider`, `wolf`, `ghast`, `slime`) clears the area and puts that one mob in
+front of you, to check the panel's portrait fits it. `/function ib_test:durability` puts worn armor and
+tools on you, for the durability column and slot counters.
 
 ## Licence
 
