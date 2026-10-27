@@ -22,9 +22,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -34,14 +33,19 @@ import net.minecraft.world.item.ItemStack;
  * events into these calls, so this class and everything under it is the same on every loader.
  */
 public final class ClientHooks {
-	/** Registered by each loader's entrypoint: vanilla's registry on Fabric, an event on NeoForge. */
-	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(IndicatorBars.id(IndicatorBars.MOD_ID));
-	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
-	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J, KEY_CATEGORY);
+	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H,
+			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J,
+			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
 	private static IBConfig config;
+	/**
+	 * True while the level renders. GUI entity previews (inventory, horse screen, our own portrait)
+	 * run the same renderer, and get no bar.
+	 */
+	private static boolean renderingLevel;
 
 	private ClientHooks() {
 	}
@@ -76,8 +80,15 @@ public final class ClientHooks {
 		EQUIPMENT.tick(minecraft, config.durability);
 	}
 
+	public static void setRenderingLevel(boolean rendering) {
+		renderingLevel = rendering;
+	}
+
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
 	public static void extractBar(LivingEntity entity, LivingEntityRenderState state) {
+		if (TargetPanelRenderer.drawingPortrait()) {
+			state.nameTag = null;
+		}
 		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
 		bar.target = entity == TARGET.target();
 		bar.entityId = entity.getId();
@@ -88,11 +99,9 @@ public final class ClientHooks {
 		}
 	}
 
-	/** A living entity was submitted for drawing; the pose stack is at its feet. */
-	public static void submitBar(PortraitRenderer renderer, LivingEntityRenderState state, PoseStack poseStack,
-			SubmitNodeCollector collector, CameraRenderState camera) {
-		// GUI previews (inventory, horse screen, our own portrait) draw with a camera that was never set up.
-		if (!camera.initialized) {
+	/** A living entity was just rendered; the pose stack is at its feet. */
+	public static void renderBar(PortraitRenderer renderer, LivingEntityRenderState state, PoseStack poseStack, MultiBufferSource buffers) {
+		if (!renderingLevel) {
 			return;
 		}
 		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
@@ -100,7 +109,7 @@ public final class ClientHooks {
 			PortraitFit.capture(renderer, bar.entityId);
 		}
 		if (bar.visible) {
-			WorldBarRenderer.submit(bar, state, poseStack, collector, camera, config.health);
+			WorldBarRenderer.render(bar, state, poseStack, buffers, config.health);
 		}
 	}
 

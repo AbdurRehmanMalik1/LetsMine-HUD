@@ -15,6 +15,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /** NeoForge entrypoint. The floating bars hook in through {@code LivingEntityRendererMixin}. */
@@ -23,7 +24,6 @@ public final class IndicatorBarsClient {
 	public IndicatorBarsClient(IEventBus modBus) {
 		ClientHooks.init(FMLPaths.CONFIGDIR.get());
 		modBus.addListener((RegisterKeyMappingsEvent event) -> {
-			event.registerCategory(ClientHooks.KEY_CATEGORY);
 			event.register(ClientHooks.TOGGLE_BARS);
 			event.register(ClientHooks.TOGGLE_DURABILITY);
 		});
@@ -34,6 +34,14 @@ public final class IndicatorBarsClient {
 		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 		NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientHooks.tick(Minecraft.getInstance()));
 		NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
+		// Entities render between the solid blocks and the end of the level.
+		NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> {
+			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+				ClientHooks.setRenderingLevel(true);
+			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+				ClientHooks.setRenderingLevel(false);
+			}
+		});
 	}
 
 	/**

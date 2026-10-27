@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 
 /** Mixed into {@code LivingEntityRenderer}: what {@link PortraitFit} needs to measure a mob's model. */
 public interface PortraitRenderer {
-	/** The model the renderer last drew with. Baby and variant models are chosen inside {@code submit}. */
+	/** The model the renderer last drew with. Baby and variant models are chosen inside {@code render}. */
 	EntityModel<?> indicatorbars$model();
 
 	/** The renderer's own scale hook (ghasts, slimes, giants). */
