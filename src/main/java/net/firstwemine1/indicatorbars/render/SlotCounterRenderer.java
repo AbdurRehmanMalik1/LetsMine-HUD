@@ -4,9 +4,12 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
 import net.firstwemine1.indicatorbars.meter.durability.Durability;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -20,6 +23,22 @@ public final class SlotCounterRenderer {
 	private static final float TEXT_Z = 200;
 
 	private SlotCounterRenderer() {
+	}
+
+	/** Hotbar and offhand slots, where vanilla's hotbar draws them. */
+	public static void renderHotbar(int width, int height, DurabilityConfig config) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Player player = minecraft.player;
+		if (player == null || player.isSpectator() || minecraft.options.hideGui) {
+			return;
+		}
+		int centre = width / 2;
+		int y = height - 16 - 3;
+		for (int i = 0; i < 9; i++) {
+			render(minecraft.font, player.getInventory().items.get(i), centre - 90 + i * 20 + 2, y, 0, config);
+		}
+		int offhandX = player.getMainArm() == HumanoidArm.RIGHT ? centre - 91 - 26 : centre + 91 + 10;
+		render(minecraft.font, player.getOffhandItem(), offhandX, y, 0, config);
 	}
 
 	public static void render(Font font, ItemStack stack, int x, int y, float blitOffset, DurabilityConfig config) {

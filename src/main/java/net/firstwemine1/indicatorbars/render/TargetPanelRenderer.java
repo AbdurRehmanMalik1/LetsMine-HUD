@@ -2,6 +2,7 @@ package net.firstwemine1.indicatorbars.render;
 
 import java.util.Locale;
 
+import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
@@ -126,9 +127,13 @@ public final class TargetPanelRenderer {
 		drawingPortrait = true;
 		try {
 			PortraitFit.Fit fit = PortraitFit.fit(target, x0, y0, x1, y1);
-			GuiComponent.enableScissor(x0, y0, x1, y1);
+			// No GUI scissor helper yet: clip in window pixels.
+			Window window = Minecraft.getInstance().getWindow();
+			double scale = window.getGuiScale();
+			RenderSystem.enableScissor((int) (x0 * scale), (int) (window.getHeight() - y1 * scale),
+					(int) ((x1 - x0) * scale), (int) ((y1 - y0) * scale));
 			InventoryScreen.renderEntityInInventory(fit.x(), fit.y(), fit.scale(), PortraitFit.MOUSE_X, PortraitFit.MOUSE_Y, target);
-			GuiComponent.disableScissor();
+			RenderSystem.disableScissor();
 		} finally {
 			drawingPortrait = false;
 			target.deathTime = deathTime;

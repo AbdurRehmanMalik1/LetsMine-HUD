@@ -19,7 +19,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
@@ -56,7 +56,7 @@ public final class ClientHooks {
 			config.health.showBars = !config.health.showBars;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.displayClientMessage(Component.translatable(
+				minecraft.player.displayClientMessage(new TranslatableComponent(
 						config.health.showBars ? "indicatorbars.bars.on" : "indicatorbars.bars.off"), true);
 			}
 		}
@@ -64,7 +64,7 @@ public final class ClientHooks {
 			config.durability.showNumbers = !config.durability.showNumbers;
 			config.save();
 			if (minecraft.player != null) {
-				minecraft.player.displayClientMessage(Component.translatable(
+				minecraft.player.displayClientMessage(new TranslatableComponent(
 						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"), true);
 			}
 		}
@@ -110,6 +110,11 @@ public final class ClientHooks {
 	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
 	public static void renderSlot(Font font, ItemStack stack, int x, int y, float blitOffset) {
 		SlotCounterRenderer.render(font, stack, x, y, blitOffset, config.durability);
+	}
+
+	/** The hotbar's slot counters (1.18.2 has no item decorations). */
+	public static void renderHotbarCounters(int width, int height) {
+		SlotCounterRenderer.renderHotbar(width, height, config.durability);
 	}
 
 	/** Disconnected or left the world: forget the target and the equipment. */

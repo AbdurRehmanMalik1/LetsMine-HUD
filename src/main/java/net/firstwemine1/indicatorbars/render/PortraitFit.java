@@ -160,7 +160,8 @@ public final class PortraitFit {
 				return false;
 			}
 		}
-		return !part.skipDraw;
+		// 1.18.2 parts have no skipDraw flag.
+		return true;
 	}
 
 	private static Fit place(float[] bounds, int x0, int y0, int x1, int y1) {
