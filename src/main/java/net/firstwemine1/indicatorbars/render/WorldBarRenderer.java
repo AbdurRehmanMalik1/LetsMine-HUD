@@ -2,21 +2,20 @@ package net.firstwemine1.indicatorbars.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Matrix4f;
 import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.util.FastColor;
-import org.joml.Matrix4f;
 
 /**
  * The bar floating above a mob. Drawn like a name tag: facing the camera, at name-tag scale, so it
- * shrinks with distance, with the render type of a name tag's dark box. 1.20.1 has no polygon-offset
- * mode for these quads, so none of them overlap: a border, then the fill and the empty part side by
+ * shrinks with distance, in {@link BarRenderType}. There is no polygon offset
+ * for these quads, so none of them overlap: a border, then the fill and the empty part side by
  * side.
  */
 public final class WorldBarRenderer {
@@ -45,7 +44,7 @@ public final class WorldBarRenderer {
 		poseStack.scale(-scale, -scale, scale);
 
 		Matrix4f pose = poseStack.last().pose();
-		VertexConsumer consumer = buffers.getBuffer(config.seeThrough ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground());
+		VertexConsumer consumer = buffers.getBuffer(config.seeThrough ? BarRenderType.BAR_SEE_THROUGH : BarRenderType.BAR);
 		float left = -WIDTH / 2;
 		float right = WIDTH / 2;
 		float split = left + WIDTH * fraction;

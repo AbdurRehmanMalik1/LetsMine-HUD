@@ -18,7 +18,6 @@ import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
@@ -92,25 +91,25 @@ public final class ClientHooks {
 	}
 
 	/** The mob health panel. */
-	public static void renderHud(GuiGraphics graphics, float partialTick) {
+	public static void renderHud(PoseStack poseStack, float partialTick) {
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
 		}
 		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.render(graphics, target, alpha, config.health);
+			TargetPanelRenderer.render(poseStack, target, alpha, config.health);
 		}
 	}
 
 	/** The durability column. */
-	public static void renderEquipmentHud(GuiGraphics graphics, float partialTick) {
-		EquipmentHudRenderer.render(graphics, config.durability, partialTick);
+	public static void renderEquipmentHud(PoseStack poseStack, float partialTick) {
+		EquipmentHudRenderer.render(poseStack, config.durability, partialTick);
 	}
 
 	/** An item was drawn in a GUI slot (hotbar, inventory screens). */
-	public static void renderSlot(GuiGraphics graphics, Font font, ItemStack stack, int x, int y) {
-		SlotCounterRenderer.render(graphics, font, stack, x, y, config.durability);
+	public static void renderSlot(Font font, ItemStack stack, int x, int y, float blitOffset) {
+		SlotCounterRenderer.render(font, stack, x, y, blitOffset, config.durability);
 	}
 
 	/** Disconnected or left the world: forget the target and the equipment. */

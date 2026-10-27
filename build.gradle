@@ -3,6 +3,8 @@ plugins {
 }
 
 loom {
+	accessWidenerPath = file("src/main/resources/indicatorbars.accesswidener")
+
 	// Client-only mod: everything lives in one source set, and only the client run is useful.
 	runs {
 		client {

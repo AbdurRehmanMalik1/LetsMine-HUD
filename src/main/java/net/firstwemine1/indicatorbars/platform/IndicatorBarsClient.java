@@ -11,7 +11,7 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * Fabric entrypoint. The floating bars hook in through {@code LivingEntityRendererMixin}, the slot
- * counter through {@code GuiGraphicsMixin}.
+ * counter through {@code ItemRendererMixin}.
  */
 public class IndicatorBarsClient implements ClientModInitializer {
 	@Override
@@ -22,9 +22,9 @@ public class IndicatorBarsClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(ClientHooks::tick);
 		WorldRenderEvents.START.register(context -> ClientHooks.setRenderingLevel(true));
 		WorldRenderEvents.END.register(context -> ClientHooks.setRenderingLevel(false));
-		HudRenderCallback.EVENT.register((graphics, partialTick) -> {
-			ClientHooks.renderHud(graphics, partialTick);
-			ClientHooks.renderEquipmentHud(graphics, partialTick);
+		HudRenderCallback.EVENT.register((poseStack, partialTick) -> {
+			ClientHooks.renderHud(poseStack, partialTick);
+			ClientHooks.renderEquipmentHud(poseStack, partialTick);
 		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientHooks.reset());
 	}

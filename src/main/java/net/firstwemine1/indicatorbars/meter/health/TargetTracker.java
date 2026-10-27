@@ -43,7 +43,7 @@ public class TargetTracker {
 		} else if (target != null) {
 			ticksAway++;
 			// A dying mob stays on the panel at 0 health until its body disappears.
-			if (ticksAway > lingerTicks(config) + FADE_TICKS || target.isRemoved() || target.level() != minecraft.level) {
+			if (ticksAway > lingerTicks(config) + FADE_TICKS || target.isRemoved() || target.level != minecraft.level) {
 				reset();
 			}
 		}

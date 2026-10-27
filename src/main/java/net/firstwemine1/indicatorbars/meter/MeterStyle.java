@@ -25,6 +25,17 @@ public final class MeterStyle {
 		return max > 0 ? Mth.clamp(value / max, 0, 1) : 0;
 	}
 
+	/** Each channel of {@code from} moved {@code t} of the way to {@code to} (later versions: {@code ARGB.srgbLerp}). */
+	public static int lerp(float t, int from, int to) {
+		int color = 0;
+		for (int shift = 0; shift < 32; shift += 8) {
+			int a = from >>> shift & 0xFF;
+			int b = to >>> shift & 0xFF;
+			color |= Math.round(a + (b - a) * t) << shift;
+		}
+		return color;
+	}
+
 	/** {@code color} with its alpha scaled by {@code alpha} (26.x has this as {@code ARGB.multiplyAlpha}). */
 	public static int multiplyAlpha(int color, float alpha) {
 		int a = Math.round(FastColor.ARGB32.alpha(color) * alpha);
