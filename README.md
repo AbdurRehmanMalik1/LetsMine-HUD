@@ -61,7 +61,7 @@ git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
-## Building and testing
+## Building and testing (this branch: Fabric 1.21.4)
 
 ```
 ./gradlew build                # jar in build/libs
