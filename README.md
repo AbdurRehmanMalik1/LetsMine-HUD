@@ -61,7 +61,7 @@ git worktree add "../ports/indicator-bars-neoforge-26.3" -b neoforge/26.3
 Set the commit identity in each new worktree before its first commit (see the workspace `CLAUDE.md`).
 Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 
-## Building and testing (this branch: NeoForge 26.3)
+## Building and testing (this branch: NeoForge 26.2)
 
 ```
 ./gradlew build                          # jar in build/libs
@@ -69,9 +69,8 @@ Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 ./gradlew runClient -PquickPlay="World"  # open run/client/saves/World straight away
 ```
 
-NeoForge has no client game test like Fabric's. To check by eye, copy the world the Fabric game test
-saves (`build/run/clientGameTest/saves/New World` on `main`) into `run/client/saves/` and open it with
-`-PquickPlay="New World"`. On a fresh run directory, set `onboardAccessibility:false` in
+NeoForge has no client game test like Fabric's. To check by eye, copy the world the Fabric game test saves (`build/run/clientGameTest/saves/New World` on `fabric/26.2`) into `run/client/saves/` and open
+it with `-PquickPlay="<name>"`. On a fresh run directory, set `onboardAccessibility:false` in
 `run/client/options.txt` first, or the first-launch screen blocks quick play.
 
 ## Licence
