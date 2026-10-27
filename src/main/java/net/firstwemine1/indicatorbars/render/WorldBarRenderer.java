@@ -8,7 +8,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import org.joml.Matrix4f;
 
 /**
@@ -18,7 +19,7 @@ import org.joml.Matrix4f;
  * side.
  */
 public final class WorldBarRenderer {
-	/** Vanilla's name tag scale ({@code EntityRenderer.NAMETAG_SCALE}, protected here). */
+	/** Vanilla's name tag scale ({@code EntityRenderer.NAMETAG_SCALE} on later versions). */
 	private static final float NAMETAG_SCALE = 0.025f;
 	/** In name-tag units: 40 is one block. */
 	private static final float WIDTH = 40;
@@ -33,12 +34,12 @@ public final class WorldBarRenderer {
 	}
 
 	/** Called with the pose stack at the mob's feet, right after vanilla renders it. */
-	public static void render(HealthBarState.Bar bar, LivingEntityRenderState state, PoseStack poseStack, MultiBufferSource buffers,
-			HealthConfig config) {
+	public static void render(LivingEntity entity, float fraction, int color, PoseStack poseStack, MultiBufferSource buffers, HealthConfig config) {
+		Minecraft minecraft = Minecraft.getInstance();
 		poseStack.pushPose();
-		float lift = LIFT + (state.nameTag != null ? NAME_TAG_CLEARANCE : 0);
-		poseStack.translate(0, state.boundingBoxHeight + lift, 0);
-		poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+		float lift = LIFT + (nameTagShown(entity, minecraft) ? NAME_TAG_CLEARANCE : 0);
+		poseStack.translate(0, entity.getBbHeight() + lift, 0);
+		poseStack.mulPose(minecraft.getEntityRenderDispatcher().cameraOrientation());
 		float scale = NAMETAG_SCALE * (float) config.barScale;
 		poseStack.scale(scale, -scale, scale);
 
@@ -46,15 +47,15 @@ public final class WorldBarRenderer {
 		VertexConsumer consumer = buffers.getBuffer(config.seeThrough ? RenderType.textBackgroundSeeThrough() : RenderType.textBackground());
 		float left = -WIDTH / 2;
 		float right = WIDTH / 2;
-		float split = left + WIDTH * bar.fraction;
+		float split = left + WIDTH * fraction;
 		quad(consumer, pose, left - BORDER, -BORDER, right + BORDER, 0, MeterStyle.BACKGROUND);
 		quad(consumer, pose, left - BORDER, HEIGHT, right + BORDER, HEIGHT + BORDER, MeterStyle.BACKGROUND);
 		quad(consumer, pose, left - BORDER, 0, left, HEIGHT, MeterStyle.BACKGROUND);
 		quad(consumer, pose, right, 0, right + BORDER, HEIGHT, MeterStyle.BACKGROUND);
-		if (bar.fraction > 0) {
-			quad(consumer, pose, left, 0, split, HEIGHT, bar.color);
+		if (fraction > 0) {
+			quad(consumer, pose, left, 0, split, HEIGHT, color);
 		}
-		if (bar.fraction < 1) {
+		if (fraction < 1) {
 			quad(consumer, pose, split, 0, right, HEIGHT, MeterStyle.BACKGROUND);
 		}
 		poseStack.popPose();
@@ -66,5 +67,14 @@ public final class WorldBarRenderer {
 		consumer.addVertex(pose, x1, y1, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
 		consumer.addVertex(pose, x1, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
 		consumer.addVertex(pose, x0, y0, 0).setColor(color).setLight(LightTexture.FULL_BRIGHT);
+	}
+
+	/**
+	 * Close to {@code LivingEntityRenderer.shouldShowName}, which is protected. Later versions read the
+	 * answer from the render state instead.
+	 */
+	private static boolean nameTagShown(LivingEntity entity, Minecraft minecraft) {
+		return entity instanceof Player || entity.isCustomNameVisible()
+				|| entity.hasCustomName() && entity == minecraft.getEntityRenderDispatcher().crosshairPickEntity;
 	}
 }

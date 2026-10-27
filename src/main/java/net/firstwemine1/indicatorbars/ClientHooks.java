@@ -11,9 +11,7 @@ import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
 import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
 import net.firstwemine1.indicatorbars.render.EquipmentHudRenderer;
-import net.firstwemine1.indicatorbars.render.HealthBarState;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
-import net.firstwemine1.indicatorbars.render.PortraitRenderer;
 import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
@@ -23,7 +21,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
@@ -84,33 +81,14 @@ public final class ClientHooks {
 		renderingLevel = rendering;
 	}
 
-	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
-	public static void extractBar(LivingEntity entity, LivingEntityRenderState state) {
-		if (TargetPanelRenderer.drawingPortrait()) {
-			state.nameTag = null;
-		}
-		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
-		bar.target = entity == TARGET.target();
-		bar.entityId = entity.getId();
-		bar.visible = BarVisibility.shouldShow(entity, Minecraft.getInstance(), config.health, TARGET.target());
-		if (bar.visible) {
-			bar.fraction = MeterStyle.fraction(entity.getHealth(), entity.getMaxHealth());
-			bar.color = HealthColors.fill(entity, bar.fraction, config.health.barColor);
-		}
-	}
-
 	/** A living entity was just rendered; the pose stack is at its feet. */
-	public static void renderBar(PortraitRenderer renderer, LivingEntityRenderState state, PoseStack poseStack, MultiBufferSource buffers) {
-		if (!renderingLevel) {
+	public static void renderBar(LivingEntity entity, PoseStack poseStack, MultiBufferSource buffers) {
+		if (!renderingLevel || !BarVisibility.shouldShow(entity, Minecraft.getInstance(), config.health, TARGET.target())) {
 			return;
 		}
-		HealthBarState.Bar bar = ((HealthBarState) state).indicatorbars$bar();
-		if (bar.target) {
-			PortraitFit.capture(renderer, bar.entityId);
-		}
-		if (bar.visible) {
-			WorldBarRenderer.render(bar, state, poseStack, buffers, config.health);
-		}
+		float fraction = MeterStyle.fraction(entity.getHealth(), entity.getMaxHealth());
+		int color = HealthColors.fill(entity, fraction, config.health.barColor);
+		WorldBarRenderer.render(entity, fraction, color, poseStack, buffers, config.health);
 	}
 
 	/** The mob health panel. */
@@ -122,7 +100,7 @@ public final class ClientHooks {
 		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
 		float alpha = TARGET.alpha(config.health, partialTick);
 		if (alpha > 0) {
-			TargetPanelRenderer.render(graphics, target, alpha, partialTick, config.health);
+			TargetPanelRenderer.render(graphics, target, alpha, config.health);
 		}
 	}
 

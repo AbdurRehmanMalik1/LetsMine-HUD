@@ -12,17 +12,6 @@ loom {
 	}
 }
 
-fabricApi {
-	// In-game check: ./gradlew runClientGameTest opens a flat world, spawns cows and screenshots the
-	// bars and the panel into build/run/clientGameTest/screenshots. Source in src/gametest.
-	configureTests {
-		createSourceSet = true
-		modId = "indicatorbars-test"
-		enableGameTests = false
-		eula = true
-	}
-}
-
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"

@@ -1,7 +1,6 @@
 package net.firstwemine1.indicatorbars.meter.durability;
 
 import net.firstwemine1.indicatorbars.config.IBConfig.DurabilityConfig;
-import net.minecraft.util.ARGB;
 import net.minecraft.world.item.ItemStack;
 
 /** Uses left on a tool, weapon or piece of armor. Unbreakable items are not damageable and get nothing. */
@@ -28,7 +27,7 @@ public final class Durability {
 
 	/** Vanilla's durability bar colour, green to red, so the number matches the bar under the item. */
 	public static int color(ItemStack stack) {
-		return ARGB.opaque(stack.getBarColor());
+		return 0xFF000000 | stack.getBarColor();
 	}
 
 	public static String text(ItemStack stack, DurabilityConfig.HudText mode) {

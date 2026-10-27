@@ -2,6 +2,7 @@ package net.firstwemine1.indicatorbars.meter.health;
 
 import net.firstwemine1.indicatorbars.config.IBConfig.HealthConfig;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -31,7 +32,7 @@ public class TargetTracker {
 	/** 1 while the panel is fully shown, falling to 0 as it fades out. */
 	public float alpha(HealthConfig config, float partialTick) {
 		float fading = ticksAway + partialTick - lingerTicks(config);
-		return Math.clamp(1 - fading / FADE_TICKS, 0, 1);
+		return Mth.clamp(1 - fading / FADE_TICKS, 0, 1);
 	}
 
 	public void tick(Minecraft minecraft, HealthConfig config) {
