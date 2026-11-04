@@ -3,6 +3,7 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
@@ -15,6 +16,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 /** NeoForge entrypoint. The floating bars hook in through {@code LivingEntityRendererMixin}. */
@@ -26,6 +28,7 @@ public final class IndicatorBarsClient {
 			event.registerCategory(ClientHooks.KEY_CATEGORY);
 			event.register(ClientHooks.TOGGLE_BARS);
 			event.register(ClientHooks.TOGGLE_DURABILITY);
+			event.register(ClientHooks.TOGGLE_CROPS);
 		});
 		modBus.addListener((RegisterGuiLayersEvent event) -> {
 			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::renderHud);
@@ -34,6 +37,12 @@ public final class IndicatorBarsClient {
 		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 		NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientHooks.tick(Minecraft.getInstance()));
 		NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
+		// Crops have no renderer of their own. This version's stages give no submit collector, so the bars are drawn here.
+		NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent.AfterEntities event) -> {
+			MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+			ClientHooks.renderCropBars(event.getPoseStack(), buffers, event.getLevelRenderState().cameraRenderState);
+			buffers.endBatch();
+		});
 	}
 
 	/**
