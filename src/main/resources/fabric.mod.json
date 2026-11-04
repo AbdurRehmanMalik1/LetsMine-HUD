@@ -3,7 +3,7 @@
 	"id": "indicatorbars",
 	"version": "${version}",
 	"name": "Indicator Bars",
-	"description": "Client-side meters: health bars above mobs, a health panel for the mob you look at, and durability counters for tools and armor. Works on any server.",
+	"description": "Client-side meters: health bars above mobs, a health panel for the mob you look at, durability counters for tools and armor, and growth bars over crops. Works on any server.",
 	"authors": [
 		"firstwemine1-mc-dev"
 	],
