@@ -1,4 +1,6 @@
-# Indicator Bars
+# LetsMine Vanilla HUD
+
+The code, mod id and branches still say `indicatorbars`, the name it started under.
 
 A client-only mod of meters: small bars and counters for numbers the game knows but doesn't show well.
 Every meter reads data vanilla already sends to the client, so the mod needs nothing on the server and
