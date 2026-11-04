@@ -3,6 +3,7 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.inventory.Slot;
 import net.minecraftforge.client.ClientRegistry;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -33,6 +34,7 @@ final class IndicatorBarsClient {
 		modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(() -> {
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_BARS);
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_DURABILITY);
+			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_CROPS);
 			OverlayRegistry.registerOverlayTop("Indicator Bars target panel",
 					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHud(poseStack, partialTick));
 			OverlayRegistry.registerOverlayTop("Indicator Bars durability",
@@ -63,6 +65,14 @@ final class IndicatorBarsClient {
 				ClientHooks.setRenderingLevel(true);
 			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
 				ClientHooks.setRenderingLevel(false);
+			}
+		});
+		// Crops have no renderer of their own, and there is no stage right after the entities here.
+		bus.addListener((RenderLevelStageEvent event) -> {
+			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+				MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+				ClientHooks.renderCropBars(event.getPoseStack(), buffers, event.getCamera(), event.getFrustum());
+				buffers.endBatch();
 			}
 		});
 		bus.addListener(EventPriority.NORMAL, false, RenderLivingEvent.Post.class,

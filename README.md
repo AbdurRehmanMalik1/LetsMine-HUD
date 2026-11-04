@@ -18,6 +18,16 @@ works on any server, vanilla included.
   less turns red and a bell plays once when it gets there.
 - Press **J** to hide or show all durability numbers.
 
+**Crops**
+- **Growth bars**: a small bar on top of every crop within 12 blocks (wheat, carrots, potatoes,
+  beetroots, melon and pumpkin stems, sweet berries, nether wart, cocoa).
+  Yellow while it grows, green when it is ready to harvest. Press **K** to turn them on or off.
+- **Red dotted line**: under the bar of a crop that isn't growing as fast as it could: too dark to
+  grow, on dry farmland, or a grown stem with no room for its
+  pumpkin or melon. The rules are vanilla's own, read from what the client already knows.
+- **Crop panel**: look at a crop (up to 16 blocks) to see its name, stage (`4/7`), bar, and what is
+  slowing it down. It replaces the mob panel while you look at a crop.
+
 ## Config
 
 `config/indicatorbars.json` is written with defaults on first launch, one section per meter. Edit it
@@ -47,6 +57,17 @@ and restart.
 | `durability.hudText` | `"uses"` | `uses` (`231`), `fraction` (`231/250`), `percent` |
 | `durability.warnPercent` | `10` | At or below this, an item turns red |
 | `durability.warnSound` | `true` | A bell when an item wears down to the warning line |
+| `crops.showBars` | `true` | Also flipped by **K** |
+| `crops.barMode` | `"all"` | `all`, `growing` (not yet ripe), `target` (panel crop only) |
+| `crops.barDistance` | `12` | Blocks |
+| `crops.barScale` | `1.0` | |
+| `crops.maxBars` | `256` | Nearest first |
+| `crops.warnCrowded` | `false` | Also draw the dotted line for crowding (same crop on both axes or a diagonal: half speed). Off because most farms are planted that way; the panel always says so |
+| `crops.showPanel` | `true` | |
+| `crops.panelAnchor` | `"top_left"` | Any `health.panelAnchor` value |
+| `crops.panelX`, `crops.panelY` | `4`, `4` | Offset from the anchor |
+| `crops.targetRange` | `16` | Blocks |
+| `crops.stageText` | `"fraction"` | `fraction` (`4/7`), `percent`, `off` |
 
 ## Branches
 
@@ -80,6 +101,9 @@ joins, it sets noon, faces them south and summons the cows (the one ahead at 6/1
 one mob in front of you, to check the panel's portrait fits it. `/function ib_test:durability` puts worn armor and tools on you, for the
 durability column and slot counters. On a fresh run directory, set `onboardAccessibility:false` in
 `run/client/options.txt` first, or the first-launch screen blocks quick play.
+
+For crops, plant wheat at a few ages and look at it: the growth bar on each, yellow filling from the left
+then green when ripe, the red dotted line on dry farmland, the panel when you aim at one, and **K**.
 
 ## Licence
 

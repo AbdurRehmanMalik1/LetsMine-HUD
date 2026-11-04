@@ -29,6 +29,11 @@ public class TargetTracker {
 		return target;
 	}
 
+	/** The crosshair is on the target this tick, not just lingering. */
+	public boolean seen() {
+		return target != null && ticksAway == 0;
+	}
+
 	/** 1 while the panel is fully shown, falling to 0 as it fades out. */
 	public float alpha(HealthConfig config, float partialTick) {
 		float fading = ticksAway + partialTick - lingerTicks(config);
