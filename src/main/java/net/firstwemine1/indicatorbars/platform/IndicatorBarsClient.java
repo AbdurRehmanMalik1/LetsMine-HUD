@@ -3,6 +3,7 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.client.IItemDecorator;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
@@ -41,6 +42,7 @@ final class IndicatorBarsClient {
 		modBus.addListener((RegisterKeyMappingsEvent event) -> {
 			event.register(ClientHooks.TOGGLE_BARS);
 			event.register(ClientHooks.TOGGLE_DURABILITY);
+			event.register(ClientHooks.TOGGLE_CROPS);
 		});
 		modBus.addListener((RegisterGuiOverlaysEvent event) -> {
 			event.registerAboveAll("target_panel", (gui, graphics, partialTick, width, height) -> ClientHooks.renderHud(graphics, partialTick));
@@ -61,6 +63,14 @@ final class IndicatorBarsClient {
 				ClientHooks.setRenderingLevel(true);
 			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
 				ClientHooks.setRenderingLevel(false);
+			}
+		});
+		// Crops have no renderer of their own: their bars go in here.
+		bus.addListener((RenderLevelStageEvent event) -> {
+			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+				MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+				ClientHooks.renderCropBars(event.getPoseStack(), buffers, event.getCamera(), event.getFrustum());
+				buffers.endBatch();
 			}
 		});
 		bus.addListener(EventPriority.NORMAL, false, RenderLivingEvent.Post.class,
