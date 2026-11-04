@@ -3,6 +3,7 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
@@ -26,6 +27,7 @@ public final class IndicatorBarsClient {
 		modBus.addListener((RegisterKeyMappingsEvent event) -> {
 			event.register(ClientHooks.TOGGLE_BARS);
 			event.register(ClientHooks.TOGGLE_DURABILITY);
+			event.register(ClientHooks.TOGGLE_CROPS);
 		});
 		modBus.addListener((RegisterGuiLayersEvent event) -> {
 			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::renderHud);
@@ -36,7 +38,12 @@ public final class IndicatorBarsClient {
 		NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
 		// Entities render between the solid blocks and the end of the level.
 		NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> {
-			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
+			if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+				// Crops have no renderer of their own, so their bars are drawn after the entities.
+				MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+				ClientHooks.renderCropBars(event.getPoseStack(), buffers, event.getCamera(), event.getFrustum());
+				buffers.endBatch();
+			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SOLID_BLOCKS) {
 				ClientHooks.setRenderingLevel(true);
 			} else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
 				ClientHooks.setRenderingLevel(false);
