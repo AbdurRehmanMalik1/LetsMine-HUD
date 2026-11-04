@@ -5,10 +5,14 @@ import java.nio.file.Path;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.firstwemine1.indicatorbars.config.IBConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.crops.CropGrowth.Crop;
+import net.firstwemine1.indicatorbars.meter.crops.CropTracker;
 import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
 import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
+import net.firstwemine1.indicatorbars.render.CropBarRenderer;
+import net.firstwemine1.indicatorbars.render.CropPanelRenderer;
 import net.firstwemine1.indicatorbars.render.EquipmentHudRenderer;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
 import net.firstwemine1.indicatorbars.render.SlotCounterRenderer;
@@ -16,6 +20,7 @@ import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.firstwemine1.indicatorbars.render.WorldBarRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.LivingEntity;
@@ -33,9 +38,12 @@ public final class ClientHooks {
 			"key.categories." + IndicatorBars.MOD_ID);
 	public static final KeyBinding TOGGLE_DURABILITY = new KeyBinding("key.indicatorbars.toggle_durability", GLFW.GLFW_KEY_J,
 			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyBinding TOGGLE_CROPS = new KeyBinding("key.indicatorbars.toggle_crops", GLFW.GLFW_KEY_K,
+			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
+	private static final CropTracker CROPS = new CropTracker();
 	private static IBConfig config;
 	/**
 	 * True while the level renders. GUI entity previews (inventory, horse screen, our own portrait)
@@ -68,12 +76,28 @@ public final class ClientHooks {
 						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"), true);
 			}
 		}
+		while (TOGGLE_CROPS.consumeClick()) {
+			config.crops.showBars = !config.crops.showBars;
+			config.save();
+			if (minecraft.player != null) {
+				minecraft.player.displayClientMessage(new TranslationTextComponent(
+						config.crops.showBars ? "indicatorbars.crops.on" : "indicatorbars.crops.off"), true);
+			}
+		}
 		if (minecraft.level == null) {
 			reset();
 			return;
 		}
 		TARGET.tick(minecraft, config.health);
 		EQUIPMENT.tick(minecraft, config.durability);
+		CROPS.tick(minecraft, config.crops);
+	}
+
+	/** The level is drawn; the matrix stack has the camera at the origin. */
+	public static void renderCropBars(MatrixStack poseStack, IRenderTypeBuffer buffers, ActiveRenderInfo camera) {
+		if (config.crops.showBars) {
+			CropBarRenderer.render(CROPS.crops(), poseStack, buffers, camera, config.crops);
+		}
 	}
 
 	public static void setRenderingLevel(boolean rendering) {
@@ -90,8 +114,13 @@ public final class ClientHooks {
 		WorldBarRenderer.render(entity, fraction, color, poseStack, buffers, config.health);
 	}
 
-	/** The mob health panel. */
+	/** The mob health panel, or the crop panel while you look at a crop and not a mob. */
 	public static void renderHud(MatrixStack poseStack, float partialTick) {
+		Crop crop = CROPS.target();
+		if (config.crops.showPanel && crop != null && !TARGET.seen()) {
+			CropPanelRenderer.render(poseStack, crop, config.crops);
+			return;
+		}
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
@@ -117,10 +146,11 @@ public final class ClientHooks {
 		SlotCounterRenderer.renderHotbar(width, height, config.durability);
 	}
 
-	/** Disconnected or left the world: forget the target and the equipment. */
+	/** Disconnected or left the world: forget the target, the equipment and the crops. */
 	public static void reset() {
 		TARGET.reset();
 		EQUIPMENT.reset();
+		CROPS.reset();
 		PortraitFit.reset();
 	}
 }

@@ -23,13 +23,15 @@ import net.minecraft.util.registry.Registry;
 
 /**
  * {@code config/indicatorbars.json}, one section per meter. Created with defaults on first launch; edit it
- * and restart. The toggle key flips {@code health.showBars} in game and saves it.
+ * and restart. The toggle keys flip {@code health.showBars}, {@code durability.showNumbers} and
+ * {@code crops.showBars} in game and save them.
  */
 public class IBConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	public HealthConfig health = new HealthConfig();
 	public DurabilityConfig durability = new DurabilityConfig();
+	public CropsConfig crops = new CropsConfig();
 
 	private transient Path path;
 
@@ -173,6 +175,58 @@ public class IBConfig {
 		}
 	}
 
+	public static class CropsConfig {
+		public enum BarMode {
+			@SerializedName("all") ALL,
+			/** Only crops still growing: ripe ones lose their bar. */
+			@SerializedName("growing") GROWING,
+			/** Only the crop in the crop panel. */
+			@SerializedName("target") TARGET
+		}
+
+		public enum StageText {
+			/** {@code 4/7} */
+			@SerializedName("fraction") FRACTION,
+			/** {@code 57%} */
+			@SerializedName("percent") PERCENT,
+			@SerializedName("off") OFF
+		}
+
+		public boolean showBars = true;
+		public BarMode barMode = BarMode.ALL;
+		/** Blocks, also how far around you crops are looked for. */
+		public int barDistance = 12;
+		public double barScale = 1.0;
+		/** The nearest this many crops get a bar, so a big farm stays cheap. */
+		public int maxBars = 256;
+		/**
+		 * Same crop on two sides halves the growth speed. Off by default: most farms are planted that
+		 * way, and every bar would warn. The panel still says so.
+		 */
+		public boolean warnCrowded = false;
+
+		public boolean showPanel = true;
+		public HudAnchor panelAnchor = HudAnchor.TOP_LEFT;
+		public int panelX = 4;
+		public int panelY = 4;
+		/** Blocks. */
+		public double targetRange = 16;
+		public StageText stageText = StageText.FRACTION;
+
+		private void fillMissing() {
+			CropsConfig defaults = new CropsConfig();
+			if (barMode == null) {
+				barMode = defaults.barMode;
+			}
+			if (panelAnchor == null) {
+				panelAnchor = defaults.panelAnchor;
+			}
+			if (stageText == null) {
+				stageText = defaults.stageText;
+			}
+		}
+	}
+
 	public static IBConfig load(Path path) {
 		IBConfig config = null;
 		if (Files.exists(path)) {
@@ -211,5 +265,9 @@ public class IBConfig {
 			durability = new DurabilityConfig();
 		}
 		durability.fillMissing();
+		if (crops == null) {
+			crops = new CropsConfig();
+		}
+		crops.fillMissing();
 	}
 }

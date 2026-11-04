@@ -3,6 +3,7 @@ package net.firstwemine1.indicatorbars.platform;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.render.TargetPanelRenderer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.inventory.container.Slot;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.GuiContainerEvent;
@@ -32,6 +33,7 @@ final class IndicatorBarsClient {
 		modBus.addListener((FMLClientSetupEvent event) -> event.enqueueWork(() -> {
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_BARS);
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_DURABILITY);
+			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_CROPS);
 		}));
 
 		IEventBus bus = MinecraftForge.EVENT_BUS;
@@ -65,7 +67,14 @@ final class IndicatorBarsClient {
 				ClientHooks.setRenderingLevel(true);
 			}
 		});
-		bus.addListener((RenderWorldLastEvent event) -> ClientHooks.setRenderingLevel(false));
+		bus.addListener((RenderWorldLastEvent event) -> {
+			ClientHooks.setRenderingLevel(false);
+			// Crops have no renderer of their own, and this is the only level event there is.
+			Minecraft minecraft = Minecraft.getInstance();
+			IRenderTypeBuffer.Impl buffers = minecraft.renderBuffers().bufferSource();
+			ClientHooks.renderCropBars(event.getMatrixStack(), buffers, minecraft.gameRenderer.getMainCamera());
+			buffers.endBatch();
+		});
 		bus.addListener(EventPriority.NORMAL, false, RenderLivingEvent.Post.class,
 				event -> ClientHooks.renderBar(event.getEntity(), event.getMatrixStack(), event.getBuffers()));
 		bus.addListener((RenderNameplateEvent event) -> {
