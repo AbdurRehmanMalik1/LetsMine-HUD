@@ -6,10 +6,14 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.firstwemine1.indicatorbars.config.IBConfig;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.meter.crops.CropGrowth.Crop;
+import net.firstwemine1.indicatorbars.meter.crops.CropTracker;
 import net.firstwemine1.indicatorbars.meter.durability.EquipmentTracker;
 import net.firstwemine1.indicatorbars.meter.health.BarVisibility;
 import net.firstwemine1.indicatorbars.meter.health.HealthColors;
 import net.firstwemine1.indicatorbars.meter.health.TargetTracker;
+import net.firstwemine1.indicatorbars.render.CropBarRenderer;
+import net.firstwemine1.indicatorbars.render.CropPanelRenderer;
 import net.firstwemine1.indicatorbars.render.EquipmentHudRenderer;
 import net.firstwemine1.indicatorbars.render.HealthBarState;
 import net.firstwemine1.indicatorbars.render.PortraitFit;
@@ -38,9 +42,11 @@ public final class ClientHooks {
 	public static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(IndicatorBars.id(IndicatorBars.MOD_ID));
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
 	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J, KEY_CATEGORY);
+	public static final KeyMapping TOGGLE_CROPS = new KeyMapping("key.indicatorbars.toggle_crops", InputConstants.KEY_K, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
+	private static final CropTracker CROPS = new CropTracker();
 	private static IBConfig config;
 
 	private ClientHooks() {
@@ -68,12 +74,28 @@ public final class ClientHooks {
 						config.durability.showNumbers ? "indicatorbars.durability.on" : "indicatorbars.durability.off"));
 			}
 		}
+		while (TOGGLE_CROPS.consumeClick()) {
+			config.crops.showBars = !config.crops.showBars;
+			config.save();
+			if (minecraft.player != null) {
+				minecraft.player.sendOverlayMessage(Component.translatable(
+						config.crops.showBars ? "indicatorbars.crops.on" : "indicatorbars.crops.off"));
+			}
+		}
 		if (minecraft.level == null) {
 			reset();
 			return;
 		}
 		TARGET.tick(minecraft, config.health);
 		EQUIPMENT.tick(minecraft, config.durability);
+		CROPS.tick(minecraft, config.crops);
+	}
+
+	/** The level's features are being submitted; the pose stack has the camera at the origin. */
+	public static void submitCropBars(PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
+		if (config.crops.showBars && camera.initialized) {
+			CropBarRenderer.submit(CROPS.crops(), poseStack, collector, camera, config.crops);
+		}
 	}
 
 	/** A living entity's render state was extracted: decide its bar while the entity is at hand. */
@@ -104,8 +126,13 @@ public final class ClientHooks {
 		}
 	}
 
-	/** The mob health panel. */
+	/** The mob health panel, or the crop panel while you look at a crop and not a mob. */
 	public static void extractHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		Crop crop = CROPS.target();
+		if (config.crops.showPanel && crop != null && !TARGET.seen()) {
+			CropPanelRenderer.extract(graphics, crop, config.crops);
+			return;
+		}
 		LivingEntity target = TARGET.target();
 		if (!config.health.showPanel || target == null) {
 			return;
@@ -127,10 +154,11 @@ public final class ClientHooks {
 		SlotCounterRenderer.extract(graphics, font, stack, x, y, config.durability);
 	}
 
-	/** Disconnected or left the world: forget the target and the equipment. */
+	/** Disconnected or left the world: forget the target, the equipment and the crops. */
 	public static void reset() {
 		TARGET.reset();
 		EQUIPMENT.reset();
+		CROPS.reset();
 		PortraitFit.reset();
 	}
 }

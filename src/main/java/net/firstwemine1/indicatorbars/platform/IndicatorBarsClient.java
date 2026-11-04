@@ -15,9 +15,13 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
-/** NeoForge entrypoint. The floating bars hook in through {@code LivingEntityRendererMixin}. */
+/**
+ * NeoForge entrypoint. The floating mob bars hook in through {@code LivingEntityRendererMixin}; crops
+ * have no renderer of their own, so their bars go in with the level's custom geometry.
+ */
 @Mod(value = IndicatorBars.MOD_ID, dist = Dist.CLIENT)
 public final class IndicatorBarsClient {
 	public IndicatorBarsClient(IEventBus modBus) {
@@ -26,6 +30,7 @@ public final class IndicatorBarsClient {
 			event.registerCategory(ClientHooks.KEY_CATEGORY);
 			event.register(ClientHooks.TOGGLE_BARS);
 			event.register(ClientHooks.TOGGLE_DURABILITY);
+			event.register(ClientHooks.TOGGLE_CROPS);
 		});
 		modBus.addListener((RegisterGuiLayersEvent event) -> {
 			event.registerAboveAll(IndicatorBars.id("target_panel"), ClientHooks::extractHud);
@@ -34,6 +39,8 @@ public final class IndicatorBarsClient {
 		modBus.addListener(IndicatorBarsClient::registerSlotCounter);
 		NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> ClientHooks.tick(Minecraft.getInstance()));
 		NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> ClientHooks.reset());
+		NeoForge.EVENT_BUS.addListener((SubmitCustomGeometryEvent event) -> ClientHooks.submitCropBars(
+				event.getPoseStack(), event.getSubmitNodeCollector(), event.getLevelRenderState().cameraRenderState));
 	}
 
 	/**
