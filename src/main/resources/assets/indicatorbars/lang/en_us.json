@@ -2,8 +2,19 @@
 	"key.category.indicatorbars.indicatorbars": "Indicator Bars",
 	"key.indicatorbars.toggle_bars": "Toggle Health Bars",
 	"key.indicatorbars.toggle_durability": "Toggle Durability Numbers",
+	"key.indicatorbars.toggle_crops": "Toggle Crop Bars",
 	"indicatorbars.bars.on": "Health bars: on",
 	"indicatorbars.bars.off": "Health bars: off",
 	"indicatorbars.durability.on": "Durability numbers: on",
-	"indicatorbars.durability.off": "Durability numbers: off"
+	"indicatorbars.durability.off": "Durability numbers: off",
+	"indicatorbars.crops.on": "Crop bars: on",
+	"indicatorbars.crops.off": "Crop bars: off",
+	"indicatorbars.crops.ripe": "Ready to harvest",
+	"indicatorbars.crops.fruiting": "Grown: its fruit grows beside it",
+	"indicatorbars.crops.optimal": "Growing at full speed",
+	"indicatorbars.crops.too_dark": "Too dark to grow: light %s, needs %s",
+	"indicatorbars.crops.dry": "Dry farmland: slow. Water within 4 blocks",
+	"indicatorbars.crops.blocked_above": "Blocked above: no room for its top",
+	"indicatorbars.crops.no_fruit_room": "No room for fruit: needs an empty side on dirt",
+	"indicatorbars.crops.crowded": "Crowded: half speed. Alternate crop rows"
 }
