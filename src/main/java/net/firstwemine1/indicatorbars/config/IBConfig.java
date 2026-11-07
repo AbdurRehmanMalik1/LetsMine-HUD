@@ -6,8 +6,10 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -18,6 +20,7 @@ import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.firstwemine1.indicatorbars.meter.HudAnchor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 
 /**
@@ -31,6 +34,9 @@ public class IBConfig {
 	public HealthConfig health = new HealthConfig();
 	public DurabilityConfig durability = new DurabilityConfig();
 	public CropsConfig crops = new CropsConfig();
+	public HotbarsConfig hotbars = new HotbarsConfig();
+	public SortConfig sort = new SortConfig();
+	public CraftConfig craft = new CraftConfig();
 
 	private transient Path path;
 
@@ -226,6 +232,85 @@ public class IBConfig {
 		}
 	}
 
+	public static class HotbarsConfig {
+		/** The hotbar plus the three inventory rows. */
+		public static final int MAX_COUNT = 4;
+
+		/** 1 is just the vanilla hotbar. Each one past that takes an inventory row. */
+		public int count = 1;
+		public boolean showIndicator = true;
+		public HudAnchor indicatorAnchor = HudAnchor.HOTBAR_LEFT;
+		public int indicatorX = 0;
+		public int indicatorY = 0;
+		/** Which bar is in the hotbar, counted from 0, per world or server. Written by the keys. */
+		public Map<String, Integer> active = new HashMap<>();
+
+		public int active(String world) {
+			Integer bar = active.get(world);
+			return bar == null || bar < 0 || bar >= MAX_COUNT ? 0 : bar;
+		}
+
+		public void setActive(String world, int bar) {
+			if (bar == 0) {
+				active.remove(world);
+			} else {
+				active.put(world, bar);
+			}
+		}
+
+		private void fillMissing() {
+			HotbarsConfig defaults = new HotbarsConfig();
+			count = Mth.clamp(count, 1, MAX_COUNT);
+			if (indicatorAnchor == null) {
+				indicatorAnchor = defaults.indicatorAnchor;
+			}
+			if (active == null) {
+				active = defaults.active;
+			}
+		}
+	}
+
+	public static class SortConfig {
+		public enum Metric {
+			@SerializedName("name") NAME,
+			/** Weapons, tools, armor, blocks, food, the rest. */
+			@SerializedName("type") TYPE,
+			/** Largest stacks first. */
+			@SerializedName("quantity") QUANTITY
+		}
+
+		public enum Preset {
+			@SerializedName("none") NONE,
+			/** Weapons, then tools, into the bottom rows. */
+			@SerializedName("combat") COMBAT,
+			/** Pickaxe, axe, shovel, then blocks, into the bottom rows. */
+			@SerializedName("builder") BUILDER
+		}
+
+		public static final int MAX_MOVES_PER_TICK = 64;
+
+		public boolean showButton = true;
+		public Metric metric = Metric.TYPE;
+		public Preset preset = Preset.NONE;
+		/** A slower sort is gentler on a strict server. */
+		public int movesPerTick = 8;
+
+		private void fillMissing() {
+			SortConfig defaults = new SortConfig();
+			if (metric == null) {
+				metric = defaults.metric;
+			}
+			if (preset == null) {
+				preset = defaults.preset;
+			}
+			movesPerTick = Mth.clamp(movesPerTick, 1, MAX_MOVES_PER_TICK);
+		}
+	}
+
+	public static class CraftConfig {
+		public boolean showButton = true;
+	}
+
 	public static IBConfig load(Path path) {
 		IBConfig config = null;
 		if (Files.exists(path)) {
@@ -268,5 +353,16 @@ public class IBConfig {
 			crops = new CropsConfig();
 		}
 		crops.fillMissing();
+		if (hotbars == null) {
+			hotbars = new HotbarsConfig();
+		}
+		hotbars.fillMissing();
+		if (sort == null) {
+			sort = new SortConfig();
+		}
+		sort.fillMissing();
+		if (craft == null) {
+			craft = new CraftConfig();
+		}
 	}
 }
