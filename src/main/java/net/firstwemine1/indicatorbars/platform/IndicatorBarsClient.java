@@ -20,11 +20,21 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraftforge.client.event.ScreenEvent;
+import net.firstwemine1.indicatorbars.render.LateTooltip;
 
 /** Client setup: turns Forge events into {@link ClientHooks} calls. Bars use events, not mixins. */
 final class IndicatorBarsClient {
 	/** Vanilla draws container items in front of the screen's blit offset by this much. */
 	private static final float CONTAINER_BLIT_OFFSET = 100;
+
+	/** The screen whose buttons are showing, and what keeps them in place each frame. */
+	private static Screen followedScreen;
+	private static Runnable followButtons;
 
 	private IndicatorBarsClient() {
 	}
@@ -35,10 +45,15 @@ final class IndicatorBarsClient {
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_BARS);
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_DURABILITY);
 			ClientRegistry.registerKeyBinding(ClientHooks.TOGGLE_CROPS);
+			ClientRegistry.registerKeyBinding(ClientHooks.CYCLE_HOTBAR);
+			ClientRegistry.registerKeyBinding(ClientHooks.HOTBAR_UP);
+			ClientRegistry.registerKeyBinding(ClientHooks.HOTBAR_DOWN);
 			OverlayRegistry.registerOverlayTop("Indicator Bars target panel",
 					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHud(poseStack, partialTick));
 			OverlayRegistry.registerOverlayTop("Indicator Bars durability",
 					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderEquipmentHud(poseStack, partialTick));
+			OverlayRegistry.registerOverlayTop("Indicator Bars hotbar indicator",
+					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHotbarIndicator(poseStack));
 			// 1.18.2 has no item decorations: the hotbar's numbers are an overlay drawn over the hotbar...
 			OverlayRegistry.registerOverlayAbove(ForgeIngameGui.HOTBAR_ELEMENT, "Indicator Bars hotbar counters",
 					(gui, poseStack, partialTick, width, height) -> ClientHooks.renderHotbarCounters(width, height));
@@ -58,6 +73,26 @@ final class IndicatorBarsClient {
 				ClientHooks.tick(Minecraft.getInstance());
 			}
 		});
+		bus.addListener((ScreenEvent.InitScreenEvent.Post event) -> {
+			List<AbstractWidget> widgets = new ArrayList<>();
+			for (net.minecraft.client.gui.components.events.GuiEventListener listener : event.getListenersList()) {
+				if (listener instanceof AbstractWidget) {
+					widgets.add((AbstractWidget) listener);
+				}
+			}
+			int existing = widgets.size();
+			followedScreen = event.getScreen();
+			followButtons = ClientHooks.attachScreenButtons(followedScreen, widgets);
+			for (AbstractWidget added : new ArrayList<>(widgets.subList(existing, widgets.size()))) {
+				event.addListener(added);
+			}
+		});
+		bus.addListener((ScreenEvent.DrawScreenEvent.Pre event) -> {
+			if (followButtons != null && event.getScreen() == followedScreen) {
+				followButtons.run();
+			}
+		});
+		bus.addListener((ScreenEvent.DrawScreenEvent.Post event) -> LateTooltip.draw(event.getScreen(), event.getPoseStack(), event.getMouseX(), event.getMouseY()));
 		bus.addListener((ClientPlayerNetworkEvent.LoggedOutEvent event) -> ClientHooks.reset());
 		// Entities render between the solid blocks and the weather.
 		bus.addListener((RenderLevelStageEvent event) -> {
