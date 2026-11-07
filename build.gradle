@@ -23,6 +23,12 @@ fabricApi {
 	}
 }
 
+// Everyday runs test what's new; -Pfull adds every 1.0.0 scene, for a release.
+tasks.matching { it.name == "runClientGameTest" }.configureEach {
+	systemProperty "indicatorbars.fullTest", providers.gradleProperty("full").isPresent()
+	systemProperty "indicatorbars.testOnly", providers.gradleProperty("only").getOrElse("")
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"

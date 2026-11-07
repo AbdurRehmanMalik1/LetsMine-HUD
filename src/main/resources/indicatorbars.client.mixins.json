@@ -3,8 +3,10 @@
 	"package": "net.firstwemine1.indicatorbars.platform.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"ContainerScreenAccessor",
 		"LivingEntityRendererMixin",
 		"LivingEntityRenderStateMixin",
+		"RecipeBookScreenAccessor",
 		"StemBlockMixin"
 	],
 	"injectors": {

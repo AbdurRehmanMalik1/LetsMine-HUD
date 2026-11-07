@@ -30,6 +30,35 @@ works on any server, vanilla included.
 - **Crop panel**: look at a crop (up to 16 blocks) to see its name, stage (`4/7`), bar, and what is
   slowing it down. It replaces the mob panel while you look at a crop.
 
+**Hotbars**
+- **Extra hotbars**: set `hotbars.count` to 2, 3 or 4 and each extra hotbar uses one inventory row, from
+  the bottom row up. The items really are in those rows, so nothing is lost if you remove the mod, and
+  picked-up items can land there once the rest of the inventory is full.
+- Press **G** to cycle through them, or the **up** and **down arrows** to go to the next or previous one.
+  All three wrap around. Switching does nothing while a chest or other container is open.
+- **Indicator**: `2/3` left of the hotbar. It only shows with more than one hotbar.
+
+**Sorting**
+- **Sort button**: next to the recipe book in your inventory. Left-click sorts the three inventory rows;
+  your hotbar stays as it is. Partial stacks of the same item merge first.
+- **Right-click** the button to choose the order and a preset. Choosing one sorts straight away, and your
+  choice is remembered. Items only ever move when you click.
+- **Order**: by name, by type (weapons, tools, armor, blocks, food, the rest), or by quantity.
+- **Presets** fill from the bottom row up, the rows your extra hotbars use, so switching bars lands on them:
+  **Combat** puts weapons, then tools there, and **Builder** a pickaxe, axe, shovel, then blocks.
+- It works in the survival inventory, not the creative one or chests, and won't start with an item on
+  your cursor. Sorting takes about 3 clicks per move, spread over a few ticks.
+
+**Quick craft**
+- **Book button**: right of the sort button in your inventory, and right of the output slot at a crafting
+  table. Click it to list
+  the weapons, tools and basics (torches, sticks, planks, crafting table and so on) you can craft right now.
+- **Click** an item to fill the crafting grid for one craft, and again for another. **Shift-click** fills it
+  as far as your materials allow. Nothing is made until you take the result from the output slot yourself,
+  as in vanilla; closing the screen or choosing another item returns the ingredients.
+- Your inventory only offers what fits its 2x2 grid. Swords, pickaxes and other 3x3 recipes are listed at
+  a crafting table. Only recipes you've unlocked appear, the same ones as in the recipe book.
+
 ## Config
 
 `config/indicatorbars.json` is written with defaults on first launch, one section per meter. Edit it
@@ -70,6 +99,16 @@ and restart.
 | `crops.panelX`, `crops.panelY` | `4`, `4` | Offset from the anchor |
 | `crops.targetRange` | `16` | Blocks |
 | `crops.stageText` | `"fraction"` | `fraction` (`4/7`), `percent`, `off` |
+| `sort.showButton` | `true` | |
+| `sort.metric` | `"type"` | `name`, `type`, `quantity`. Also set from the button |
+| `sort.preset` | `"none"` | `none`, `combat`, `builder`. Also set from the button |
+| `sort.movesPerTick` | `8` | `1` to `64`. Lower it if a strict server objects |
+| `craft.showButton` | `true` | |
+| `hotbars.count` | `1` | `1` to `4`. Each one past the first uses an inventory row |
+| `hotbars.showIndicator` | `true` | |
+| `hotbars.indicatorAnchor` | `"hotbar_left"` | Any `health.panelAnchor` value |
+| `hotbars.indicatorX`, `hotbars.indicatorY` | `0`, `0` | Offset from the anchor |
+| `hotbars.active` | `{}` | Written by the keys: which hotbar is in use, per world or server. Don't edit it, or the rows and hotbars stop lining up |
 
 ## Branches
 
@@ -89,10 +128,13 @@ Design and porting plan: `mod-ideas/indicator-bars-design.md` in the workspace.
 ```
 ./gradlew build                # jar in build/libs
 ./gradlew runClient            # play
-./gradlew runClientGameTest    # test scenes, screenshots in build/run/clientGameTest/screenshots
+./gradlew runClientGameTest    # the hotbars and sorting, screenshots in build/run/clientGameTest/screenshots
+./gradlew runClientGameTest -Pfull    # also everything from 1.0.0: run this before a release
+./gradlew runClientGameTest -Ponly=craft    # just quick craft
+./gradlew runClientGameTest -Ponly=panels   # just the sort and quick-craft panels in the inventory
 ```
 
-The game test screenshots four scenes in a flat world: the reference image (a herd of cows, the one
+With `-Pfull`, the game test also screenshots four scenes in a flat world: the reference image (a herd of cows, the one
 ahead hurt to 6/10, first and third person), a portrait lineup (pig, piglet, cow, chicken, horse,
 sheep, spider, wolf, ghast, slime), worn armor and tools (the durability column, hotbar and
 inventory screen), and a small farm with one crop per growth problem, plus the crop panel on each.
@@ -102,6 +144,17 @@ The crop meter is checked automatically, and a failed check fails the run: what 
 kind of crop, what it claims against vanilla's own random ticks and growth speed, the scan and its
 modes, the config, and the drawn bars, panels and **K** key, read back from the screenshots. The last
 log lines say `[crop-test] N checks, N failed`.
+
+The hotbars are checked the same way, in survival and creative: every key and wrap-around, against both
+the client's and the server's inventory, plus the indicator, an open chest, leaving and rejoining a
+world, and a real dedicated server. The log says `[hotbar-test] N checks, N failed`.
+
+Sorting is too: the button and its options by real mouse clicks, each order and preset, stacks, what must
+never move, sorting on another bar, closing the screen or opening a chest mid-sort, and a real dedicated
+server. The log says `[sort-test] N checks, N failed`.
+
+Quick craft as well: the button and list by real mouse clicks, what each grid offers, filling the grid, taking
+the result by hand, a crafting table, and a real dedicated server. The log says `[craft-test] N checks, N failed`.
 
 ## Licence
 
