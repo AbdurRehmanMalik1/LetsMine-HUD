@@ -27,6 +27,18 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TranslationTextComponent;
 import org.lwjgl.glfw.GLFW;
+import net.firstwemine1.indicatorbars.hotbar.HotbarSwitcher;
+import net.firstwemine1.indicatorbars.render.HotbarIndicatorRenderer;
+import net.firstwemine1.indicatorbars.render.QuickCraftButton;
+import net.firstwemine1.indicatorbars.render.SortButton;
+import net.firstwemine1.indicatorbars.sort.InventorySorter;
+import net.minecraft.client.gui.widget.Widget;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.inventory.ContainerScreen;
+import net.minecraft.client.gui.screen.inventory.CraftingScreen;
+import net.minecraft.inventory.container.RecipeBookContainer;
+import net.minecraft.client.gui.screen.inventory.InventoryScreen;
+import java.util.List;
 
 /**
  * Everything the loader-specific code calls. Each loader's entrypoint only turns its own events into
@@ -39,6 +51,12 @@ public final class ClientHooks {
 	public static final KeyBinding TOGGLE_DURABILITY = new KeyBinding("key.indicatorbars.toggle_durability", GLFW.GLFW_KEY_J,
 			"key.categories." + IndicatorBars.MOD_ID);
 	public static final KeyBinding TOGGLE_CROPS = new KeyBinding("key.indicatorbars.toggle_crops", GLFW.GLFW_KEY_K,
+			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyBinding CYCLE_HOTBAR = new KeyBinding("key.indicatorbars.cycle_hotbar", GLFW.GLFW_KEY_G,
+			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyBinding HOTBAR_UP = new KeyBinding("key.indicatorbars.hotbar_up", GLFW.GLFW_KEY_UP,
+			"key.categories." + IndicatorBars.MOD_ID);
+	public static final KeyBinding HOTBAR_DOWN = new KeyBinding("key.indicatorbars.hotbar_down", GLFW.GLFW_KEY_DOWN,
 			"key.categories." + IndicatorBars.MOD_ID);
 
 	private static final TargetTracker TARGET = new TargetTracker();
@@ -84,10 +102,20 @@ public final class ClientHooks {
 						config.crops.showBars ? "indicatorbars.crops.on" : "indicatorbars.crops.off"), true);
 			}
 		}
+		while (CYCLE_HOTBAR.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, 1);
+		}
+		while (HOTBAR_UP.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, 1);
+		}
+		while (HOTBAR_DOWN.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, -1);
+		}
 		if (minecraft.level == null) {
 			reset();
 			return;
 		}
+		InventorySorter.tick(minecraft, config);
 		TARGET.tick(minecraft, config.health);
 		EQUIPMENT.tick(minecraft, config.durability);
 		CROPS.tick(minecraft, config.crops);
@@ -146,8 +174,37 @@ public final class ClientHooks {
 		SlotCounterRenderer.renderHotbar(width, height, config.durability);
 	}
 
+	/** Which hotbar is in use. */
+	public static void renderHotbarIndicator(MatrixStack poseStack) {
+		HotbarIndicatorRenderer.render(poseStack, config.hotbars);
+	}
+
+	/**
+	 * A screen was built. The player's inventory gets the sort button, and any crafting screen the
+	 * quick-craft button. Returns what must run each frame to keep them in place, or null if nothing was added.
+	 */
+	public static Runnable attachScreenButtons(Screen screen, List<Widget> widgets) {
+		if (!(screen instanceof InventoryScreen || screen instanceof CraftingScreen) || !(((ContainerScreen<?>) screen).getMenu() instanceof RecipeBookContainer)) {
+			return null;
+		}
+		SortButton sort = screen instanceof InventoryScreen && config.sort.showButton ? SortButton.attach((InventoryScreen) screen, widgets, config) : null;
+		QuickCraftButton craft = config.craft.showButton ? QuickCraftButton.attach((ContainerScreen<?>) screen, widgets, (RecipeBookContainer<?>) ((ContainerScreen<?>) screen).getMenu()) : null;
+		if (sort == null && craft == null) {
+			return null;
+		}
+		return () -> {
+			if (sort != null) {
+				sort.follow();
+			}
+			if (craft != null) {
+				craft.follow();
+			}
+		};
+	}
+
 	/** Disconnected or left the world: forget the target, the equipment and the crops. */
 	public static void reset() {
+		InventorySorter.reset();
 		TARGET.reset();
 		EQUIPMENT.reset();
 		CROPS.reset();
