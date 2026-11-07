@@ -3,6 +3,8 @@
 	"package": "net.firstwemine1.indicatorbars.platform.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"ContainerScreenAccessor",
+		"RecipeBookScreenAccessor",
 		"LivingEntityRendererMixin",
 		"LivingEntityRenderStateMixin"
 	],
