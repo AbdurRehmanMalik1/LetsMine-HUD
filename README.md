@@ -30,6 +30,35 @@ works on any server, vanilla included.
 - **Crop panel**: look at a crop (up to 16 blocks) to see its name, stage (`4/7`), bar, and what is
   slowing it down. It replaces the mob panel while you look at a crop.
 
+**Hotbars**
+- **Extra hotbars**: set `hotbars.count` to 2, 3 or 4 and each extra hotbar uses one inventory row, from
+  the bottom row up. The items really are in those rows, so nothing is lost if you remove the mod, and
+  picked-up items can land there once the rest of the inventory is full.
+- Press **G** to cycle through them, or the **up** and **down arrows** to go to the next or previous one.
+  All three wrap around. Switching does nothing while a chest or other container is open.
+- **Indicator**: `2/3` left of the hotbar. It only shows with more than one hotbar.
+
+**Sorting**
+- **Sort button**: next to the recipe book in your inventory. Left-click sorts the three inventory rows;
+  your hotbar stays as it is. Partial stacks of the same item merge first.
+- **Right-click** the button to choose the order and a preset. Choosing one sorts straight away, and your
+  choice is remembered. Items only ever move when you click.
+- **Order**: by name, by type (weapons, tools, armor, blocks, food, the rest), or by quantity.
+- **Presets** fill from the bottom row up, the rows your extra hotbars use, so switching bars lands on them:
+  **Combat** puts weapons, then tools there, and **Builder** a pickaxe, axe, shovel, then blocks.
+- It works in the survival inventory, not the creative one or chests, and won't start with an item on
+  your cursor. Sorting takes about 3 clicks per move, spread over a few ticks.
+
+**Quick craft**
+- **Book button**: right of the sort button in your inventory, and right of the output slot at a crafting
+  table. Click it to list
+  the weapons, tools and basics (torches, sticks, planks, crafting table and so on) you can craft right now.
+- **Click** an item to fill the crafting grid for one craft, and again for another. **Shift-click** fills it
+  as far as your materials allow. Nothing is made until you take the result from the output slot yourself,
+  as in vanilla; closing the screen or choosing another item returns the ingredients.
+- Your inventory only offers what fits its 2x2 grid. Swords, pickaxes and other 3x3 recipes are listed at
+  a crafting table. Only recipes you've unlocked appear, the same ones as in the recipe book.
+
 ## Config
 
 `config/indicatorbars.json` is written with defaults on first launch, one section per meter. Edit it
@@ -70,6 +99,16 @@ and restart.
 | `crops.panelX`, `crops.panelY` | `4`, `4` | Offset from the anchor |
 | `crops.targetRange` | `16` | Blocks |
 | `crops.stageText` | `"fraction"` | `fraction` (`4/7`), `percent`, `off` |
+| `sort.showButton` | `true` | |
+| `sort.metric` | `"type"` | `name`, `type`, `quantity`. Also set from the button |
+| `sort.preset` | `"none"` | `none`, `combat`, `builder`. Also set from the button |
+| `sort.movesPerTick` | `8` | `1` to `64`. Lower it if a strict server objects |
+| `craft.showButton` | `true` | |
+| `hotbars.count` | `1` | `1` to `4`. Each one past the first uses an inventory row |
+| `hotbars.showIndicator` | `true` | |
+| `hotbars.indicatorAnchor` | `"hotbar_left"` | Any `health.panelAnchor` value |
+| `hotbars.indicatorX`, `hotbars.indicatorY` | `0`, `0` | Offset from the anchor |
+| `hotbars.active` | `{}` | Written by the keys: which hotbar is in use, per world or server. Don't edit it, or the rows and hotbars stop lining up |
 
 ## Branches
 
@@ -101,6 +140,7 @@ tools on you, for the durability column and slot counters.
 
 For crops, plant wheat at a few ages and look at it: the growth bar on each, yellow filling from the left
 then green when ripe, the red dotted line on dry farmland, the panel when you aim at one, and **K**.
+
 
 ## Licence
 
