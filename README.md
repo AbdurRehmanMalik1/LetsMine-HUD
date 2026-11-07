@@ -1,4 +1,4 @@
-# LetsMine Vanilla HUD
+# LetsMine HUD
 
 The code, mod id and branches still say `indicatorbars`, the name it started under.
 
