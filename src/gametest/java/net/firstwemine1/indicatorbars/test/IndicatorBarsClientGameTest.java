@@ -1,18 +1,24 @@
 package net.firstwemine1.indicatorbars.test;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.client.gametest.v1.world.TestWorldSave;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.loader.api.FabricLoader;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,19 +30,46 @@ import javax.imageio.ImageIO;
 import net.firstwemine1.indicatorbars.ClientHooks;
 import net.firstwemine1.indicatorbars.IndicatorBars;
 import net.firstwemine1.indicatorbars.config.IBConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.CraftConfig;
 import net.firstwemine1.indicatorbars.config.IBConfig.CropsConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.HotbarsConfig;
+import net.firstwemine1.indicatorbars.config.IBConfig.SortConfig;
+import net.firstwemine1.indicatorbars.hotbar.HotbarSwitcher;
 import net.firstwemine1.indicatorbars.meter.MeterStyle;
+import net.firstwemine1.indicatorbars.render.QuickCraftButton;
+import net.firstwemine1.indicatorbars.render.QuickCraftPanel;
+import net.firstwemine1.indicatorbars.render.SortButton;
+import net.firstwemine1.indicatorbars.render.SortPanel;
+import net.firstwemine1.indicatorbars.sort.InventorySorter;
+import net.firstwemine1.indicatorbars.sort.ItemKind;
 import net.firstwemine1.indicatorbars.meter.crops.CropGrowth;
 import net.firstwemine1.indicatorbars.meter.crops.CropGrowth.Crop;
 import net.firstwemine1.indicatorbars.meter.crops.CropGrowth.Problem;
 import net.firstwemine1.indicatorbars.meter.crops.CropTracker;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.ImageButton;
+import net.minecraft.client.gui.screens.inventory.CraftingScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.locale.Language;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -47,8 +80,9 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Test scenes in a flat world, screenshotted to build/run/clientGameTest/screenshots. The mob and
- * durability scenes are for looking at; the crop meter is asserted, and any failure fails the run.
+ * Test scenes in a flat world, screenshotted to build/run/clientGameTest/screenshots. An everyday run
+ * asserts what's new, the hotbars and sorting; {@code -Pfull} adds the 1.0.0 scenes, where the mob and
+ * durability ones are for looking at and the crop meter is asserted. Any failure fails the run.
  */
 public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 	/** One mob at a time straight ahead: the portrait must fit each in its box. */
@@ -65,13 +99,31 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 			{"slime", "~ ~ ~5", "Size:3"},
 	};
 
-	/** How many crop checks ran, for the log. */
+	/** How many checks ran, for the log. */
 	private static int checks;
+	private static int sortChecks;
+	private static int craftChecks;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if ("panels".equals(System.getProperty("indicatorbars.testOnly"))) {
+			panelsOnly(context);
+			return;
+		}
+		if ("craft".equals(System.getProperty("indicatorbars.testOnly"))) {
+			craftOnly(context);
+			return;
+		}
 		List<String> failures = new ArrayList<>();
-		cropConfig(failures);
+		List<String> hotbarFailures = new ArrayList<>();
+		List<String> sortFailures = new ArrayList<>();
+		List<String> craftFailures = new ArrayList<>();
+		boolean full = Boolean.getBoolean("indicatorbars.fullTest");
+		if (full) {
+			cropConfig(failures);
+		}
+		int cropChecks;
+		TestWorldSave save;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			world.getClientWorld().waitForChunksRender();
 			TestServerContext server = world.getServer();
@@ -82,6 +134,39 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 			server.runCommand("execute as @p at @s run tp @s ~ ~ ~ 0 10");
 			context.waitTicks(5);
 
+			if (full) {
+				oneZeroScenes(context, server, failures);
+				// Those mobs leave drops behind, which would end up in the inventories being checked.
+				server.runCommand("kill @e[type=!player]");
+				context.waitTicks(25);
+				server.runCommand("kill @e[type=item]");
+			}
+			cropChecks = checks;
+			sortScene(context, server, sortFailures);
+			craftScene(context, server, craftFailures);
+			hotbarConfig(hotbarFailures);
+			hotbars(context, server, hotbarFailures);
+			save = world.getWorldSave();
+		}
+		hotbarsAfterRejoin(context, save, hotbarFailures);
+		hotbarsOnDedicatedServer(context, hotbarFailures, sortFailures, craftFailures);
+		if (full) {
+			IndicatorBars.LOGGER.info("[crop-test] {} checks, {} failed", cropChecks, failures.size());
+		}
+		IndicatorBars.LOGGER.info("[hotbar-test] {} checks, {} failed", checks - cropChecks - sortChecks - craftChecks, hotbarFailures.size());
+		IndicatorBars.LOGGER.info("[sort-test] {} checks, {} failed", sortChecks, sortFailures.size());
+		failures.addAll(hotbarFailures);
+		IndicatorBars.LOGGER.info("[craft-test] {} checks, {} failed", craftChecks, craftFailures.size());
+		failures.addAll(sortFailures);
+		failures.addAll(craftFailures);
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Failed checks:\n  " + String.join("\n  ", failures));
+		}
+	}
+
+	/** Everything from 1.0.0. */
+	private static void oneZeroScenes(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		{
 			cows(context, server);
 			for (String[] portrait : PORTRAITS) {
 				server.runCommand("kill @e[type=!player]");
@@ -98,10 +183,6 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 			crops(context, server, failures);
 			cropPixels(context, server, failures);
 			cropLogic(context, server, failures);
-		}
-		IndicatorBars.LOGGER.info("[crop-test] {} checks, {} failed", checks, failures.size());
-		if (!failures.isEmpty()) {
-			throw new AssertionError("Crops:\n  " + String.join("\n  ", failures));
 		}
 	}
 
@@ -828,6 +909,1310 @@ public class IndicatorBarsClientGameTest implements FabricClientGameTest {
 			expect(failures, "config: broken file, defaults", IBConfig.load(path).crops.barMode == defaults.barMode);
 		} catch (IOException e) {
 			throw new AssertionError("Could not test the config", e);
+		}
+	}
+
+	/** Every slot's count of one item, on the client and the server, which must agree. */
+	private static int countOf(ClientGameTestContext context, TestServerContext server, List<String> failures, String id) {
+		int client = context.computeOnClient(minecraft -> count(minecraft.player.getInventory(), id));
+		int onServer = server.computeOnServer(minecraftServer -> count(minecraftServer.getPlayerList().getPlayers().get(0).getInventory(), id));
+		expect(failures, id + ": client and server agree, got " + client + " and " + onServer, client == onServer);
+		return onServer;
+	}
+
+	private static int count(Inventory inventory, String id) {
+		int total = 0;
+		for (int i = 0; i < 36; i++) {
+			if (BuiltInRegistries.ITEM.getKey(inventory.getItem(i).getItem()).toString().equals(id)) {
+				total += inventory.getItem(i).getCount();
+			}
+		}
+		return total;
+	}
+
+	private static void expectCount(ClientGameTestContext context, TestServerContext server, List<String> failures, String what, String id, int want) {
+		int got = countOf(context, server, failures, id);
+		expect(failures, what + ": want " + want + " " + id + ", got " + got, got == want);
+	}
+
+	/** What the open panel offers, once it has caught up. */
+	private static List<String> offered(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).refreshSoon());
+		context.waitTicks(2);
+		return context.computeOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).offered());
+	}
+
+	private static void clickQuickCraft(ClientGameTestContext context) {
+		int[] at = context.computeOnClient(minecraft -> {
+			QuickCraftButton arrow = widget(minecraft, QuickCraftButton.class);
+			return new int[] {arrow.getX() + arrow.getWidth() / 2, arrow.getY() + arrow.getHeight() / 2};
+		});
+		clickAt(context, at[0], at[1], LEFT_BUTTON);
+		context.waitTicks(2);
+	}
+
+	/**
+	 * A click on an offered item with Ctrl or Shift. The test input's mouse press always says no modifier
+	 * is held, so this goes straight to the screen, with what a real click carries.
+	 */
+	private static void clickOfferWith(ClientGameTestContext context, List<String> failures, String id, int modifiers) {
+		offered(context);
+		int[] at = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).cellCentre(id));
+		expect(failures, "offered, so it can be clicked: " + id, at != null);
+		if (at != null) {
+			context.runOnClient(minecraft -> minecraft.screen.mouseClicked(new MouseButtonEvent(at[0] + 0.5, at[1] + 0.5, new MouseButtonInfo(LEFT_BUTTON, modifiers)), false));
+			context.waitTicks(1);
+		}
+	}
+
+	/** A real click on an offered item. */
+	private static void clickOffer(ClientGameTestContext context, List<String> failures, String id) {
+		offered(context);
+		int[] at = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).cellCentre(id));
+		expect(failures, "offered, so it can be clicked: " + id, at != null);
+		if (at != null) {
+			clickAt(context, at[0], at[1], LEFT_BUTTON);
+		}
+	}
+
+	private static final String[][] CRAFT_MATERIALS = {{"inventory.0", "oak_planks 30"}, {"inventory.1", "coal 3"}, {"inventory.2", "stick 4"}, {"inventory.3", "iron_ingot 4"}};
+
+	/** How many of each panel exist and are open: never more than one of each, never both open. */
+	private static void expectOnePanel(ClientGameTestContext context, List<String> failures, String what, boolean sortOpen, boolean listOpen) {
+		context.waitTicks(2);
+		int[] state = context.computeOnClient(minecraft -> {
+			int[] counts = new int[4];
+			for (AbstractWidget widget : Screens.getButtons(minecraft.screen)) {
+				if (widget instanceof SortPanel) {
+					counts[0]++;
+					counts[1] += widget.visible ? 1 : 0;
+				} else if (widget instanceof QuickCraftPanel) {
+					counts[2]++;
+					counts[3] += widget.visible ? 1 : 0;
+				}
+			}
+			return counts;
+		});
+		expect(failures, what + ": one of each panel, got " + Arrays.toString(state), state[0] == 1 && state[2] == 1);
+		expect(failures, what + ": sort open " + sortOpen + ", list open " + listOpen + ", got " + Arrays.toString(state),
+				state[1] == (sortOpen ? 1 : 0) && state[3] == (listOpen ? 1 : 0));
+	}
+
+	private static boolean recipeBookOpen(Minecraft minecraft) {
+		return ((net.firstwemine1.indicatorbars.platform.mixin.RecipeBookScreenAccessor) minecraft.screen).getRecipeBookComponent().isVisible();
+	}
+
+	private static void clickRecipeBook(ClientGameTestContext context) {
+		int[] at = context.computeOnClient(minecraft -> {
+			ImageButton book = widget(minecraft, ImageButton.class);
+			return new int[] {book.getX() + 10, book.getY() + 9};
+		});
+		clickAt(context, at[0], at[1], LEFT_BUTTON);
+		context.waitTicks(3);
+	}
+
+	/** A widget's rectangle in screenshot pixels. */
+	private static int[] buttonRect(AbstractWidget widget) {
+		int scale = (int) Minecraft.getInstance().getWindow().getGuiScale();
+		return new int[] {widget.getX() * scale, widget.getY() * scale, widget.getRight() * scale, widget.getBottom() * scale};
+	}
+
+	private static int colourCount(Path screenshot, int[] rect, int colour) {
+		BufferedImage image;
+		try {
+			image = ImageIO.read(screenshot.toFile());
+		} catch (IOException e) {
+			throw new AssertionError("Could not read " + screenshot, e);
+		}
+		int count = 0;
+		for (int y = rect[1]; y < rect[3]; y++) {
+			for (int x = rect[0]; x < rect[2]; x++) {
+				if ((image.getRGB(x, y) & 0xFFFFFF) == colour) {
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+
+	/** The tooltip's purple frame, the only such colour on this screen. */
+	private static int tooltipPixels(Path screenshot) {
+		BufferedImage image;
+		try {
+			image = ImageIO.read(screenshot.toFile());
+		} catch (IOException e) {
+			throw new AssertionError("Could not read " + screenshot, e);
+		}
+		int count = 0;
+		for (int y = 0; y < image.getHeight(); y++) {
+			for (int x = 0; x < image.getWidth(); x++) {
+				int rgb = image.getRGB(x, y);
+				int red = rgb >> 16 & 255;
+				int green = rgb >> 8 & 255;
+				int blue = rgb & 255;
+				// Red too: the blue of a hovered button's dark outline has none.
+				if (blue > red + 30 && green < 12 && blue > 60 && red > 20) {
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+
+	/** Just the two panels in the inventory, opened with the real key, with the cursor left where a player's would be. */
+	private static void panelsOnly(ClientGameTestContext context) {
+		List<String> failures = new ArrayList<>();
+		try (TestSingleplayerContext world = context.worldBuilder().create()) {
+			world.getClientWorld().waitForChunksRender();
+			TestServerContext server = world.getServer();
+			server.runCommand("time set noon");
+			server.runCommand("gamemode survival @a");
+			server.runCommand("recipe give @a *");
+			fillSort(context, server, new String[][] {{"inventory.0", "oak_planks 30"}, {"inventory.1", "coal 3"}, {"inventory.2", "stick 4"}});
+			context.getInput().pressKey(options -> options.keyInventory);
+			context.waitFor(minecraft -> minecraft.screen instanceof InventoryScreen);
+			context.waitTicks(3);
+			clearToasts(context);
+			expectOnePanel(context, failures, "opened", false, false);
+
+			clickQuickCraft(context);
+			expectOnePanel(context, failures, "book", false, true);
+			context.waitTicks(30);
+			int onArrow = tooltipPixels(context.takeScreenshot("panels-list-cursor-on-book"));
+			expect(failures, "list open, cursor on the book: no tooltip, got " + onArrow, onArrow == 0);
+			clickSortButton(context, RIGHT_BUTTON);
+			expectOnePanel(context, failures, "then right-click sort", true, false);
+			context.waitTicks(30);
+			int onSort = tooltipPixels(context.takeScreenshot("panels-sort-cursor-on-button"));
+			expect(failures, "sort open, cursor on its button: no tooltip, got " + onSort, onSort == 0);
+			clickQuickCraft(context);
+			expectOnePanel(context, failures, "then book", false, true);
+			clickSortButton(context, LEFT_BUTTON);
+			context.waitTicks(4);
+			expectOnePanel(context, failures, "then left-click sort", false, true);
+			context.waitTicks(30);
+			int onOther = tooltipPixels(context.takeScreenshot("panels-list-cursor-on-sort"));
+			expect(failures, "list open, cursor on the sort button: no tooltip, got " + onOther, onOther == 0);
+			clickQuickCraft(context);
+			expectOnePanel(context, failures, "book closes the list", false, false);
+			context.waitTicks(30);
+			int closed = tooltipPixels(context.takeScreenshot("panels-closed-cursor-on-book"));
+			expect(failures, "all closed, cursor on the book: the tooltip is back, got " + closed, closed > 0);
+			clickSortButton(context, RIGHT_BUTTON);
+			clickPanelRow(context, SortPanel.row(SortConfig.Metric.NAME));
+			context.waitTicks(4);
+			expectOnePanel(context, failures, "a sort choice leaves its panel open", true, false);
+			clickQuickCraft(context);
+			expectOnePanel(context, failures, "book after a choice", false, true);
+			context.runOnClient(minecraft -> minecraft.screen.resize(minecraft.screen.width, minecraft.screen.height));
+			context.waitTicks(3);
+			expectOnePanel(context, failures, "a window resize starts closed", false, false);
+			clickQuickCraft(context);
+			clickSortButton(context, RIGHT_BUTTON);
+			expectOnePanel(context, failures, "after a resize, only the last one opened", true, false);
+
+			// Opening a panel closes the recipe book, as the book closes a panel.
+			clickSortButton(context, RIGHT_BUTTON);
+			expectOnePanel(context, failures, "closed again", false, false);
+			int home = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftButton.class).getX());
+			clickRecipeBook(context);
+			expect(failures, "recipe book opens", context.computeOnClient(IndicatorBarsClientGameTest::recipeBookOpen));
+			clickQuickCraft(context);
+			expect(failures, "book button closes the recipe book", context.computeOnClient(minecraft -> !recipeBookOpen(minecraft)));
+			expectOnePanel(context, failures, "book button, with the recipe book open", false, true);
+			int backHome = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftButton.class).getX());
+			expect(failures, "window back where it was, got " + backHome + " want " + home, backHome == home);
+			clickRecipeBook(context);
+			expect(failures, "recipe book opens over the list", context.computeOnClient(IndicatorBarsClientGameTest::recipeBookOpen));
+			expectOnePanel(context, failures, "recipe book closes the list", false, false);
+			clickSortButton(context, RIGHT_BUTTON);
+			expect(failures, "sort menu closes the recipe book", context.computeOnClient(minecraft -> !recipeBookOpen(minecraft)));
+			expectOnePanel(context, failures, "sort menu, with the recipe book open", true, false);
+			clickSortButton(context, RIGHT_BUTTON);
+
+			// The same colours as the recipe book button, grey, and blue under the cursor.
+			context.getInput().setCursorPos(0, 0);
+			context.waitTicks(3);
+			Path normal = context.takeScreenshot("button-normal");
+			int[] greys = context.computeOnClient(minecraft -> buttonRect(widget(minecraft, QuickCraftButton.class)));
+			int[] bookRect = context.computeOnClient(minecraft -> buttonRect(widget(minecraft, ImageButton.class)));
+			expect(failures, "normal: the recipe book's grey", colourCount(normal, greys, 0xC6C6C6) > 0 && colourCount(normal, greys, 0x555555) > 0);
+			expect(failures, "normal: no blue", colourCount(normal, greys, 0x8892C9) == 0);
+			expect(failures, "normal: the recipe book button has this grey too", colourCount(normal, bookRect, 0xC6C6C6) > 0);
+			int[] centre = context.computeOnClient(minecraft -> {
+				QuickCraftButton button = widget(minecraft, QuickCraftButton.class);
+				return new int[] {button.getX() + 10, button.getY() + 9};
+			});
+			double scale = context.computeOnClient(minecraft -> (double) minecraft.getWindow().getGuiScale());
+			context.getInput().setCursorPos((centre[0] + 0.5) * scale, (centre[1] + 0.5) * scale);
+			context.waitTicks(3);
+			Path hovered = context.takeScreenshot("button-hovered");
+			expect(failures, "hovered: the recipe book's blue", colourCount(hovered, greys, 0x8892C9) > 0 && colourCount(hovered, greys, 0x343E75) > 0);
+
+			// After a click it stays blue until something else is clicked, exactly as the recipe book button does.
+			clickQuickCraft(context);
+			clickQuickCraft(context);
+			context.getInput().setCursorPos(0, 0);
+			context.waitTicks(3);
+			Path afterOurs = context.takeScreenshot("button-after-click");
+			expect(failures, "after a click on ours: ours blue, the recipe book's grey",
+					colourCount(afterOurs, greys, 0x8892C9) > 0 && colourCount(afterOurs, bookRect, 0x8892C9) == 0);
+			clickRecipeBook(context);
+			clickRecipeBook(context);
+			context.getInput().setCursorPos(0, 0);
+			context.waitTicks(3);
+			Path afterVanilla = context.takeScreenshot("recipe-book-after-click");
+			int[] greysNow = context.computeOnClient(minecraft -> buttonRect(widget(minecraft, QuickCraftButton.class)));
+			int[] bookNow = context.computeOnClient(minecraft -> buttonRect(widget(minecraft, ImageButton.class)));
+			expect(failures, "after a click on the recipe book: it blue, ours grey",
+					colourCount(afterVanilla, bookNow, 0x8892C9) > 0 && colourCount(afterVanilla, greysNow, 0x8892C9) == 0);
+			context.setScreen(() -> null);
+		}
+		IndicatorBars.LOGGER.info("[panel-test] {} checks, {} failed", checks, failures.size());
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Failed checks:\n  " + String.join("\n  ", failures));
+		}
+	}
+
+	/** Just quick craft, in a world of its own and on a real server. */
+	private static void craftOnly(ClientGameTestContext context) {
+		List<String> failures = new ArrayList<>();
+		try (TestSingleplayerContext world = context.worldBuilder().create()) {
+			world.getClientWorld().waitForChunksRender();
+			world.getServer().runCommand("time set noon");
+			craftScene(context, world.getServer(), failures);
+		}
+		try (TestDedicatedServerContext server = context.worldBuilder().createServer();
+				var connection = server.connect()) {
+			connection.getClientWorld().waitForChunksRender();
+			server.runCommand("gamemode survival @a");
+			craftOnDedicatedServer(context, server, failures);
+		}
+		IndicatorBars.LOGGER.info("[craft-test] {} checks, {} failed", checks, failures.size());
+		if (!failures.isEmpty()) {
+			throw new AssertionError("Failed checks:\n  " + String.join("\n  ", failures));
+		}
+	}
+
+	/** One item's count across the crafting grid and in the output slot of whatever crafting menu is open. */
+	private static int[] gridAndOutput(net.minecraft.world.inventory.AbstractContainerMenu open, String id) {
+		var menu = (net.minecraft.world.inventory.AbstractCraftingMenu) open;
+		int grid = 0;
+		for (var slot : menu.getInputGridSlots()) {
+			if (BuiltInRegistries.ITEM.getKey(slot.getItem().getItem()).toString().equals(id)) {
+				grid += slot.getItem().getCount();
+			}
+		}
+		ItemStack output = menu.getResultSlot().getItem();
+		return new int[] {grid, BuiltInRegistries.ITEM.getKey(output.getItem()).toString().equals(id) ? output.getCount() : 0};
+	}
+
+	/** What the grid holds of an ingredient and the output slot of a result, the same on both sides. */
+	private static void expectGrid(ClientGameTestContext context, TestServerContext server, List<String> failures, String what,
+			String ingredient, int inGrid, String result, int inOutput) {
+		context.waitTicks(4);
+		int clientGrid = context.computeOnClient(minecraft -> gridAndOutput(minecraft.player.containerMenu, ingredient)[0]);
+		int clientOut = context.computeOnClient(minecraft -> gridAndOutput(minecraft.player.containerMenu, result)[1]);
+		int serverGrid = server.computeOnServer(minecraftServer -> gridAndOutput(minecraftServer.getPlayerList().getPlayers().get(0).containerMenu, ingredient)[0]);
+		int serverOut = server.computeOnServer(minecraftServer -> gridAndOutput(minecraftServer.getPlayerList().getPlayers().get(0).containerMenu, result)[1]);
+		String got = "client " + clientGrid + "/" + clientOut + ", server " + serverGrid + "/" + serverOut;
+		expect(failures, what + ": want " + inGrid + " " + ingredient + " in the grid and " + inOutput + " " + result + " waiting, got " + got,
+				clientGrid == inGrid && serverGrid == inGrid && clientOut == inOutput && serverOut == inOutput);
+	}
+
+	/** Real clicks: take the waiting result, then put it down in an inventory slot. */
+	private static void takeResultTo(ClientGameTestContext context, int slotNumber) {
+		int[][] at = context.computeOnClient(minecraft -> {
+			var screen = (net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) minecraft.screen;
+			var menu = (net.minecraft.world.inventory.AbstractCraftingMenu) screen.getMenu();
+			int left = (screen.width - 176) / 2;
+			int top = (screen.height - 166) / 2;
+			var output = menu.getResultSlot();
+			var target = menu.getSlot(slotNumber);
+			return new int[][] {{left + output.x + 8, top + output.y + 8}, {left + target.x + 8, top + target.y + 8}};
+		});
+		clickAt(context, at[0][0], at[0][1], LEFT_BUTTON);
+		clickAt(context, at[1][0], at[1][1], LEFT_BUTTON);
+		context.waitTicks(3);
+	}
+
+	/** In the inventory: the next button along from sort, the same size and on its row, inside the window. */
+	private static void expectInventoryButton(ClientGameTestContext context, List<String> failures) {
+		int[] at = context.computeOnClient(minecraft -> {
+			QuickCraftButton button = widget(minecraft, QuickCraftButton.class);
+			SortButton sort = widget(minecraft, SortButton.class);
+			return new int[] {button.getX(), button.getY(), button.getWidth(), button.getHeight(), sort.getRight(), sort.getY(), sort.getWidth(), sort.getHeight(),
+					(minecraft.screen.width + 176) / 2};
+		});
+		String got = Arrays.toString(at);
+		expect(failures, "inventory button: same size as the sort button, got " + got, at[2] == at[6] && at[3] == at[7]);
+		expect(failures, "inventory button: right of the sort button, got " + got, at[0] == at[4] + 2);
+		expect(failures, "inventory button: on its row, got " + got, at[1] == at[5]);
+		expect(failures, "inventory button: inside the window, got " + got, at[0] + at[2] <= at[8]);
+	}
+
+	/** At a table: right of the output slot, centred on it, level with the recipe book, inside the window. */
+	private static void expectTableButton(ClientGameTestContext context, List<String> failures) {
+		int[] at = context.computeOnClient(minecraft -> {
+			QuickCraftButton button = widget(minecraft, QuickCraftButton.class);
+			ImageButton book = widget(minecraft, ImageButton.class);
+			CraftingScreen screen = (CraftingScreen) minecraft.screen;
+			var output = screen.getMenu().getResultSlot();
+			int left = (screen.width - 176) / 2;
+			int top = (screen.height - 166) / 2;
+			return new int[] {button.getX(), button.getY(), button.getRight(), button.getHeight(), left + output.x + 16 + 5, top + output.y - 5, 26, book.getY(), left + 176};
+		});
+		String got = Arrays.toString(at);
+		expect(failures, "table button: right of the output slot, got " + got, at[0] >= at[4] && at[0] <= at[4] + 2);
+		expect(failures, "table button: centred on the output slot, got " + got, 2 * at[1] + at[3] == 2 * at[5] + at[6]);
+		expect(failures, "table button: level with the recipe book, got " + got, at[1] == at[7]);
+		expect(failures, "table button: inside the window, got " + got, at[2] <= at[8]);
+	}
+
+	private static void craftScene(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		int mark = checks;
+		server.runCommand("gamemode survival @a");
+		server.runCommand("recipe give @a *");
+		fillSort(context, server, CRAFT_MATERIALS);
+
+		openInventory(context);
+		clearToasts(context);
+		expectInventoryButton(context, failures);
+		context.getInput().setCursorPos(0, 0);
+		context.waitTicks(2);
+		context.takeScreenshot("craft-button");
+
+		// What the 2x2 grid offers, and the list clear of the arrow.
+		clickQuickCraft(context);
+		boolean opened = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).visible);
+		expect(failures, "button: opens the list", opened);
+		List<String> small = offered(context);
+		for (String id : List.of("minecraft:stick", "minecraft:torch", "minecraft:crafting_table")) {
+			expect(failures, "inventory offers " + id + ", got " + small, small.contains(id));
+		}
+		for (String id : List.of("minecraft:iron_sword", "minecraft:iron_pickaxe", "minecraft:wooden_sword", "minecraft:chest")) {
+			expect(failures, "inventory leaves out " + id + ", got " + small, !small.contains(id));
+		}
+		boolean clear = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftPanel.class).getX() >= widget(minecraft, QuickCraftButton.class).getRight());
+		expect(failures, "list: outside the window, clear of the button", clear);
+		context.getInput().setCursorPos(0, 0);
+		context.waitTicks(2);
+		context.takeScreenshot("craft-list");
+
+		// A click fills the grid and makes nothing: the result waits in the output slot.
+		clickOffer(context, failures, "minecraft:stick");
+		expectGrid(context, server, failures, "click", "minecraft:oak_planks", 2, "minecraft:stick", 4);
+		expectCount(context, server, failures, "click: nothing made yet", "minecraft:stick", 4);
+		expectCount(context, server, failures, "click: ingredients moved to the grid", "minecraft:oak_planks", 28);
+		context.getInput().setCursorPos(0, 0);
+		context.waitTicks(2);
+		context.takeScreenshot("craft-filled");
+
+		// Again adds one more craft's worth; taking the result is what makes it, one craft at a time.
+		clickOffer(context, failures, "minecraft:stick");
+		expectGrid(context, server, failures, "second click", "minecraft:oak_planks", 4, "minecraft:stick", 4);
+		expectCount(context, server, failures, "second click: nothing made yet", "minecraft:stick", 4);
+		takeResultTo(context, 20);
+		expectCount(context, server, failures, "took the result by hand", "minecraft:stick", 8);
+		expectGrid(context, server, failures, "took the result by hand", "minecraft:oak_planks", 2, "minecraft:stick", 4);
+
+		// Choosing something else sends the grid back first.
+		clickOffer(context, failures, "minecraft:torch");
+		expectGrid(context, server, failures, "another item", "minecraft:coal", 1, "minecraft:torch", 4);
+		expectCount(context, server, failures, "another item: the planks came back", "minecraft:oak_planks", 28);
+
+		// Shift fills as far as the materials go, and still makes nothing. Ctrl is just a click now.
+		context.runOnClient(minecraft -> minecraft.screen.onClose());
+		context.waitTicks(4);
+		expectCount(context, server, failures, "closing: ingredients back", "minecraft:coal", 3);
+		openInventory(context);
+		clickQuickCraft(context);
+		clickOfferWith(context, failures, "minecraft:torch", InputConstants.MOD_SHIFT);
+		expectGrid(context, server, failures, "Shift", "minecraft:coal", 3, "minecraft:torch", 4);
+		expectCount(context, server, failures, "Shift: nothing made yet", "minecraft:torch", 0);
+		clickOfferWith(context, failures, "minecraft:stick", InputConstants.MOD_CONTROL);
+		expectGrid(context, server, failures, "Ctrl is a plain click", "minecraft:oak_planks", 2, "minecraft:stick", 4);
+		context.runOnClient(minecraft -> minecraft.screen.onClose());
+		context.waitTicks(4);
+
+		// An item on the cursor: the grid is left alone.
+		fillSort(context, server, CRAFT_MATERIALS);
+		openInventory(context);
+		clickQuickCraft(context);
+		offered(context);
+		context.runOnClient(minecraft -> minecraft.gameMode.handleInventoryMouseClick(0, 11, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player));
+		context.waitTicks(3);
+		clickOffer(context, failures, "minecraft:crafting_table");
+		expectGrid(context, server, failures, "item on the cursor", "minecraft:oak_planks", 0, "minecraft:crafting_table", 0);
+		context.runOnClient(minecraft -> minecraft.gameMode.handleInventoryMouseClick(0, 11, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player));
+		context.waitTicks(3);
+
+		// One panel at a time.
+		clickSortButton(context, RIGHT_BUTTON);
+		boolean[] panels = context.computeOnClient(minecraft -> new boolean[] {widget(minecraft, QuickCraftPanel.class).visible, widget(minecraft, SortPanel.class).visible});
+		expect(failures, "sort panel replaces the list", !panels[0] && panels[1]);
+		clickQuickCraft(context);
+		panels = context.computeOnClient(minecraft -> new boolean[] {widget(minecraft, QuickCraftPanel.class).visible, widget(minecraft, SortPanel.class).visible});
+		expect(failures, "list replaces the sort panel", panels[0] && !panels[1]);
+		context.setScreen(() -> null);
+		context.waitTicks(2);
+
+		// At a real table: 3x3 recipes, the same way.
+		fillSort(context, server, new String[][] {{"inventory.0", "iron_ingot 6"}, {"inventory.1", "stick 8"}, {"inventory.2", "oak_planks 12"}});
+		BlockPos table = context.computeOnClient(minecraft -> minecraft.player.blockPosition()).offset(0, 0, 2);
+		server.runCommand(place(table, "@ crafting_table"));
+		server.runCommand(place(table, "@0,1,0 air"));
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> minecraft.gameMode.useItemOn(minecraft.player, InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(table), Direction.UP, table, false)));
+		context.waitFor(minecraft -> minecraft.screen instanceof CraftingScreen);
+		context.waitTicks(3);
+		clearToasts(context);
+		expectTableButton(context, failures);
+		clickQuickCraft(context);
+		List<String> big = offered(context);
+		for (String id : List.of("minecraft:iron_sword", "minecraft:iron_pickaxe", "minecraft:chest", "minecraft:stick")) {
+			expect(failures, "table offers " + id + ", got " + big, big.contains(id));
+		}
+		expect(failures, "table leaves out what there's no material for, got " + big, !big.contains("minecraft:diamond_sword"));
+		clickOffer(context, failures, "minecraft:iron_sword");
+		expectGrid(context, server, failures, "table", "minecraft:iron_ingot", 2, "minecraft:iron_sword", 1);
+		expectCount(context, server, failures, "table: nothing made yet", "minecraft:iron_sword", 0);
+		context.getInput().setCursorPos(0, 0);
+		context.waitTicks(2);
+		context.takeScreenshot("craft-table-filled");
+		takeResultTo(context, 20);
+		expectCount(context, server, failures, "table: took the sword by hand", "minecraft:iron_sword", 1);
+		expectCount(context, server, failures, "table: it used the iron", "minecraft:iron_ingot", 4);
+		context.runOnClient(minecraft -> minecraft.screen.onClose());
+		context.waitTicks(4);
+		server.runCommand(place(table, "@ air"));
+
+		// Turned off in the config.
+		context.runOnClient(minecraft -> liveConfig().craft.showButton = false);
+		openInventory(context);
+		boolean none = context.computeOnClient(minecraft -> widget(minecraft, QuickCraftButton.class) == null);
+		expect(failures, "button: off in the config", none);
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> {
+			liveConfig().craft.showButton = true;
+			liveConfig().save();
+		});
+		context.waitTicks(2);
+		craftChecks += checks - mark;
+	}
+
+	/** Over a real connection, as a plain survival player. */
+	private static void craftOnDedicatedServer(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		int mark = checks;
+		server.runCommand("recipe give @a *");
+		fillSort(context, server, CRAFT_MATERIALS);
+		context.waitTicks(10);
+		openInventory(context);
+		clickQuickCraft(context);
+		clickOffer(context, failures, "minecraft:stick");
+		expectGrid(context, server, failures, "server: click", "minecraft:oak_planks", 2, "minecraft:stick", 4);
+		expectCount(context, server, failures, "server: nothing made yet", "minecraft:stick", 4);
+		takeResultTo(context, 20);
+		expectCount(context, server, failures, "server: took the result by hand", "minecraft:stick", 8);
+		context.runOnClient(minecraft -> minecraft.screen.onClose());
+		context.waitTicks(4);
+		craftChecks += checks - mark;
+	}
+
+	/** A messy inventory, by command slot. Stone comes in two stacks that must merge. */
+	private static final String[][] SORT_ITEMS = {
+			{"inventory.0", "stone 5"}, {"inventory.3", "diamond_sword"}, {"inventory.5", "dirt 10"}, {"inventory.9", "stone 7"},
+			{"inventory.12", "cobblestone_stairs 4"}, {"inventory.14", "oak_planks 64"}, {"inventory.17", "apple 3"},
+			{"inventory.20", "iron_pickaxe"}, {"inventory.22", "iron_axe"}, {"inventory.24", "iron_shovel"},
+			{"inventory.25", "bow"}, {"inventory.26", "oak_slab 2"},
+	};
+	/** Never moved by a sort. */
+	private static final String[][] SORT_FIXED = {
+			{"hotbar.0", "torch 3"}, {"hotbar.1", "apple 1"}, {"armor.head", "iron_helmet"}, {"weapon.offhand", "shield"},
+	};
+	private static final String[] BY_NAME = {"apple:3", "bow:1", "cobblestone_stairs:4", "diamond_sword:1", "dirt:10", "iron_axe:1",
+			"iron_pickaxe:1", "iron_shovel:1", "oak_planks:64", "oak_slab:2", "stone:12"};
+	private static final String[] BY_QUANTITY = {"oak_planks:64", "stone:12", "dirt:10", "cobblestone_stairs:4", "apple:3", "oak_slab:2",
+			"bow:1", "diamond_sword:1", "iron_axe:1", "iron_pickaxe:1", "iron_shovel:1"};
+	private static final String[] BY_TYPE = {"bow:1", "diamond_sword:1", "iron_axe:1", "iron_pickaxe:1", "iron_shovel:1",
+			"dirt:10", "oak_planks:64", "stone:12", "cobblestone_stairs:4", "oak_slab:2", "apple:3"};
+	private static final String[] COMBAT_PICKED = {"bow:1", "diamond_sword:1", "iron_axe:1", "iron_pickaxe:1", "iron_shovel:1"};
+	private static final String[] COMBAT_REST = {"apple:3", "cobblestone_stairs:4", "dirt:10", "oak_planks:64", "oak_slab:2", "stone:12"};
+	private static final String[] BUILDER_PICKED = {"iron_pickaxe:1", "iron_axe:1", "iron_shovel:1", "cobblestone_stairs:4", "dirt:10",
+			"oak_planks:64", "oak_slab:2", "stone:12"};
+	private static final String[] BUILDER_REST = {"apple:3", "bow:1", "diamond_sword:1"};
+	private static final int LEFT_BUTTON = InputConstants.MOUSE_BUTTON_LEFT;
+	private static final int RIGHT_BUTTON = InputConstants.MOUSE_BUTTON_RIGHT;
+
+	/** The 27 row slots, as inventory indices 9 to 35: {@code rest} from the top, {@code picked} from the bottom row up. */
+	private static String[] rowsWith(String[] rest, String[] picked) {
+		String[] rows = new String[27];
+		Arrays.fill(rows, "air:0");
+		System.arraycopy(rest, 0, rows, 0, rest.length);
+		for (int i = 0; i < picked.length; i++) {
+			rows[(2 - i / 9) * 9 + i % 9] = picked[i];
+		}
+		return rows;
+	}
+
+	private static String[] rowsOf(String[] items) {
+		return Arrays.copyOfRange(items, 9, 36);
+	}
+
+	private static void fillSort(ClientGameTestContext context, TestServerContext server, String[][]... groups) {
+		server.runCommand("clear @a");
+		for (String[][] group : groups) {
+			for (String[] item : group) {
+				String[] parts = item[1].split(" ");
+				server.runCommand("item replace entity @a " + item[0] + " with minecraft:" + parts[0] + (parts.length > 1 ? " " + parts[1] : ""));
+			}
+		}
+		context.waitTicks(8);
+	}
+
+	private static String idCount(ItemStack stack) {
+		return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + ":" + stack.getCount();
+	}
+
+	/** Hotbar slots 0 and 1, armor and offhand as {@link #SORT_FIXED} set them, on both sides. */
+	private static void expectFixed(ClientGameTestContext context, TestServerContext server, List<String> failures, String what) {
+		String want = "torch:3 apple:1 air:0 iron_helmet:1 shield:1";
+		String client = context.computeOnClient(minecraft -> fixedOf(minecraft.player.getInventory(), minecraft.player.getItemBySlot(EquipmentSlot.HEAD), minecraft.player.getOffhandItem()));
+		String onServer = server.computeOnServer(minecraftServer -> {
+			var player = minecraftServer.getPlayerList().getPlayers().get(0);
+			return fixedOf(player.getInventory(), player.getItemBySlot(EquipmentSlot.HEAD), player.getOffhandItem());
+		});
+		expect(failures, what + ": hotbar, armor, offhand kept on the client, got " + client, want.equals(client));
+		expect(failures, what + ": hotbar, armor, offhand kept on the server, got " + onServer, want.equals(onServer));
+	}
+
+	private static String fixedOf(Inventory inventory, ItemStack head, ItemStack offhand) {
+		return idCount(inventory.getItem(0)) + " " + idCount(inventory.getItem(1)) + " " + idCount(inventory.getItem(2)) + " " + idCount(head) + " " + idCount(offhand);
+	}
+
+	private static void expectRows(ClientGameTestContext context, TestServerContext server, List<String> failures, String what, String[] want) {
+		String[] client = rowsOf(context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory())));
+		String[] onServer = rowsOf(server.computeOnServer(IndicatorBarsClientGameTest::serverInventory));
+		expect(failures, what + ": client rows, got " + String.join(" ", client), Arrays.equals(want, client));
+		expect(failures, what + ": server rows, got " + String.join(" ", onServer), Arrays.equals(want, onServer));
+	}
+
+	/** Starts a sort and waits for it to finish. */
+	private static void sortNow(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> InventorySorter.start(minecraft, liveConfig()));
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+	}
+
+	private static void setSort(ClientGameTestContext context, SortConfig.Metric metric, SortConfig.Preset preset) {
+		context.runOnClient(minecraft -> {
+			SortConfig sort = liveConfig().sort;
+			sort.metric = metric;
+			sort.preset = preset;
+		});
+	}
+
+	/** One order or preset from the messy inventory: the result, what must stay, and a second sort costing nothing. */
+	private static void sortCase(ClientGameTestContext context, TestServerContext server, List<String> failures, String what,
+			SortConfig.Metric metric, SortConfig.Preset preset, String[] want) {
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		setSort(context, metric, preset);
+		sortNow(context);
+		expectRows(context, server, failures, what, want);
+		expectFixed(context, server, failures, what);
+		int first = context.computeOnClient(minecraft -> InventorySorter.clicks());
+		expect(failures, what + ": clicks sent, got " + first, first > 0);
+		sortNow(context);
+		int second = context.computeOnClient(minecraft -> InventorySorter.clicks());
+		expect(failures, what + ": sorting again sends nothing, got " + second, second == 0);
+		expectRows(context, server, failures, what + " again", want);
+	}
+
+	private static <T extends AbstractWidget> T widget(Minecraft minecraft, Class<T> type) {
+		for (AbstractWidget widget : Screens.getButtons(minecraft.screen)) {
+			if (type.isInstance(widget)) {
+				return type.cast(widget);
+			}
+		}
+		return null;
+	}
+
+	/** A real click at a GUI position. */
+	private static void clickAt(ClientGameTestContext context, int x, int y, int button) {
+		double scale = context.computeOnClient(minecraft -> (double) minecraft.getWindow().getGuiScale());
+		context.getInput().setCursorPos((x + 0.5) * scale, (y + 0.5) * scale);
+		context.waitTicks(1);
+		context.getInput().pressMouse(button);
+		context.waitTicks(2);
+	}
+
+	private static void clickSortButton(ClientGameTestContext context, int button) {
+		int[] at = context.computeOnClient(minecraft -> {
+			SortButton sort = widget(minecraft, SortButton.class);
+			return new int[] {sort.getX() + sort.getWidth() / 2, sort.getY() + sort.getHeight() / 2};
+		});
+		clickAt(context, at[0], at[1], button);
+	}
+
+	private static void clickPanelRow(ClientGameTestContext context, int row) {
+		int[] at = context.computeOnClient(minecraft -> {
+			SortPanel panel = widget(minecraft, SortPanel.class);
+			return new int[] {panel.getX() + panel.getWidth() / 2, panel.getY() + SortPanel.PADDING + row * SortPanel.ROW_HEIGHT + SortPanel.ROW_HEIGHT / 2};
+		});
+		clickAt(context, at[0], at[1], LEFT_BUTTON);
+	}
+
+	/** Advancement popups would cover what the screenshot is for. */
+	private static void clearToasts(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> minecraft.getToastManager().clear());
+		context.waitTicks(2);
+	}
+
+	private static void openInventory(ClientGameTestContext context) {
+		context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
+		context.waitTicks(3);
+	}
+
+	private static void expectKind(List<String> failures, Item item, ItemKind want) {
+		ItemKind got = ItemKind.of(new ItemStack(item));
+		expect(failures, "type of " + item + ": want " + want + ", got " + got, got == want);
+	}
+
+	private static void sortConfig(List<String> failures) {
+		try {
+			Path path = Files.createTempDirectory("indicatorbars-test").resolve("config.json");
+			SortConfig fresh = IBConfig.load(path).sort;
+			expect(failures, "sort config: defaults", fresh.showButton && fresh.metric == SortConfig.Metric.TYPE
+					&& fresh.preset == SortConfig.Preset.NONE && fresh.movesPerTick == 8);
+			Files.writeString(path, "{\"sort\":{\"metric\":\"quantity\",\"preset\":\"builder\",\"showButton\":false,\"movesPerTick\":3}}");
+			SortConfig set = IBConfig.load(path).sort;
+			expect(failures, "sort config: read back", set.metric == SortConfig.Metric.QUANTITY && set.preset == SortConfig.Preset.BUILDER
+					&& !set.showButton && set.movesPerTick == 3);
+			SortConfig again = IBConfig.load(path).sort;
+			expect(failures, "sort config: survives being written", again.metric == SortConfig.Metric.QUANTITY && again.preset == SortConfig.Preset.BUILDER);
+			Files.writeString(path, "{\"sort\":{\"metric\":\"nope\",\"preset\":\"nope\",\"movesPerTick\":0}}");
+			SortConfig bad = IBConfig.load(path).sort;
+			expect(failures, "sort config: bad values get defaults", bad.metric == fresh.metric && bad.preset == fresh.preset && bad.movesPerTick == 1);
+			Files.writeString(path, "{\"sort\":{\"movesPerTick\":9999}}");
+			expect(failures, "sort config: too many moves is capped", IBConfig.load(path).sort.movesPerTick == SortConfig.MAX_MOVES_PER_TICK);
+			Files.writeString(path, "{\"crops\":{}}");
+			expect(failures, "sort config: an older file gains sort", IBConfig.load(path).sort != null);
+		} catch (IOException e) {
+			throw new AssertionError("Could not test the config", e);
+		}
+	}
+
+	private static void sortScene(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		int mark = checks;
+		sortConfig(failures);
+		for (Item item : List.of(Items.DIAMOND_SWORD, Items.BOW, Items.CROSSBOW, Items.TRIDENT, Items.MACE, Items.SHIELD, Items.ARROW)) {
+			expectKind(failures, item, ItemKind.WEAPON);
+		}
+		for (Item item : List.of(Items.IRON_PICKAXE, Items.IRON_AXE, Items.IRON_SHOVEL, Items.IRON_HOE, Items.SHEARS, Items.FISHING_ROD)) {
+			expectKind(failures, item, ItemKind.TOOL);
+		}
+		expectKind(failures, Items.IRON_HELMET, ItemKind.ARMOR);
+		expectKind(failures, Items.ELYTRA, ItemKind.ARMOR);
+		expectKind(failures, Items.STONE, ItemKind.BLOCK);
+		expectKind(failures, Items.OAK_STAIRS, ItemKind.BLOCK);
+		expectKind(failures, Items.CARVED_PUMPKIN, ItemKind.BLOCK);
+		expectKind(failures, Items.APPLE, ItemKind.FOOD);
+		expectKind(failures, Items.STICK, ItemKind.OTHER);
+
+		server.runCommand("gamemode survival @a");
+		context.runOnClient(minecraft -> {
+			IBConfig config = liveConfig();
+			config.hotbars.active.clear();
+			config.hotbars.count = 1;
+			config.sort.movesPerTick = 8;
+			minecraft.player.getInventory().setSelectedSlot(0);
+		});
+
+		// An empty inventory has nothing to do.
+		server.runCommand("clear @a");
+		context.waitTicks(5);
+		setSort(context, SortConfig.Metric.TYPE, SortConfig.Preset.NONE);
+		sortNow(context);
+		int empty = context.computeOnClient(minecraft -> InventorySorter.clicks());
+		expect(failures, "empty inventory: no clicks, got " + empty, empty == 0);
+
+		// Every order and preset.
+		sortCase(context, server, failures, "by name", SortConfig.Metric.NAME, SortConfig.Preset.NONE, rowsWith(BY_NAME, new String[0]));
+		sortCase(context, server, failures, "by quantity", SortConfig.Metric.QUANTITY, SortConfig.Preset.NONE, rowsWith(BY_QUANTITY, new String[0]));
+		sortCase(context, server, failures, "by type", SortConfig.Metric.TYPE, SortConfig.Preset.NONE, rowsWith(BY_TYPE, new String[0]));
+		sortCase(context, server, failures, "combat", SortConfig.Metric.NAME, SortConfig.Preset.COMBAT, rowsWith(COMBAT_REST, COMBAT_PICKED));
+		sortCase(context, server, failures, "builder", SortConfig.Metric.NAME, SortConfig.Preset.BUILDER, rowsWith(BUILDER_REST, BUILDER_PICKED));
+
+		// A preset with more than a row's worth carries on in the row above.
+		fillSort(context, server, new String[][] {{"inventory.0", "stone"}, {"inventory.1", "dirt"}, {"inventory.2", "oak_planks"}, {"inventory.3", "glass"},
+				{"inventory.4", "sand"}, {"inventory.5", "gravel"}, {"inventory.6", "bricks"}, {"inventory.7", "obsidian"}, {"inventory.8", "white_wool"},
+				{"inventory.9", "tnt"}, {"inventory.10", "apple"}});
+		setSort(context, SortConfig.Metric.NAME, SortConfig.Preset.BUILDER);
+		sortNow(context);
+		expectRows(context, server, failures, "builder, two rows", rowsWith(new String[] {"apple:1"},
+				new String[] {"bricks:1", "dirt:1", "glass:1", "gravel:1", "oak_planks:1", "obsidian:1", "sand:1", "stone:1", "tnt:1", "white_wool:1"}));
+
+		// Same item with a different name is a different stack; unstackable items don't merge.
+		fillSort(context, server, new String[][] {{"inventory.0", "stone 5"}, {"inventory.1", "iron_sword"}, {"inventory.2", "iron_sword"}});
+		server.runCommand("item replace entity @a inventory.3 with minecraft:stone[minecraft:custom_name=\"Named\"] 5");
+		context.waitTicks(4);
+		setSort(context, SortConfig.Metric.TYPE, SortConfig.Preset.NONE);
+		sortNow(context);
+		expectRows(context, server, failures, "different stacks stay apart", rowsWith(new String[] {"iron_sword:1", "iron_sword:1", "stone:5", "stone:5"}, new String[0]));
+
+		// A stack too big to fit in one leaves the rest behind.
+		fillSort(context, server, new String[][] {{"inventory.4", "dirt 40"}, {"inventory.7", "dirt 40"}, {"inventory.9", "dirt 40"}});
+		sortNow(context);
+		expectRows(context, server, failures, "stacks merge up to full", rowsWith(new String[] {"dirt:64", "dirt:56"}, new String[0]));
+
+		// An item on the cursor: no sort, nothing moved.
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		setSort(context, SortConfig.Metric.NAME, SortConfig.Preset.NONE);
+		String[] before = rowsOf(context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory())));
+		openInventory(context);
+		context.runOnClient(minecraft -> minecraft.gameMode.handleInventoryMouseClick(0, 9, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player));
+		context.waitTicks(3);
+		boolean refused = context.computeOnClient(minecraft -> !InventorySorter.start(minecraft, liveConfig()));
+		expect(failures, "item on the cursor: refused", refused);
+		context.runOnClient(minecraft -> minecraft.gameMode.handleInventoryMouseClick(0, 9, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player));
+		context.waitTicks(3);
+		expectRows(context, server, failures, "item on the cursor: nothing moved", before);
+
+		// The crafting grid stays out of it.
+		context.runOnClient(minecraft -> {
+			minecraft.gameMode.handleInventoryMouseClick(0, 37, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player);
+			minecraft.gameMode.handleInventoryMouseClick(0, 1, 0, net.minecraft.world.inventory.ClickType.PICKUP, minecraft.player);
+		});
+		context.waitTicks(3);
+		sortNow(context);
+		String grid = context.computeOnClient(minecraft -> idCount(minecraft.player.inventoryMenu.getSlot(1).getItem()));
+		String gridOnServer = server.computeOnServer(minecraftServer -> idCount(minecraftServer.getPlayerList().getPlayers().get(0).inventoryMenu.getSlot(1).getItem()));
+		expect(failures, "crafting grid kept, got " + grid + " and " + gridOnServer, grid.equals("apple:1") && gridOnServer.equals("apple:1"));
+		expectRows(context, server, failures, "sorted with something in the crafting grid", rowsWith(BY_NAME, new String[0]));
+		context.setScreen(() -> null);
+
+		sortButton(context, server, failures);
+		sortOnBar(context, server, failures);
+		sortInterrupted(context, server, failures);
+
+		context.runOnClient(minecraft -> {
+			IBConfig config = liveConfig();
+			config.sort.metric = SortConfig.Metric.TYPE;
+			config.sort.preset = SortConfig.Preset.NONE;
+			config.sort.movesPerTick = 8;
+			config.sort.showButton = true;
+			config.hotbars.count = 1;
+			config.hotbars.active.clear();
+			config.save();
+		});
+		sortChecks += checks - mark;
+	}
+
+	/** The button and its panel, by real mouse clicks. */
+	private static void sortButton(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		setSort(context, SortConfig.Metric.NAME, SortConfig.Preset.NONE);
+		openInventory(context);
+		int[] closed = context.computeOnClient(minecraft -> {
+			SortButton sort = widget(minecraft, SortButton.class);
+			ImageButton book = widget(minecraft, ImageButton.class);
+			return new int[] {sort.getX(), sort.getY(), book.getRight(), book.getY(), sort.getWidth(), sort.getHeight(), book.getHeight()};
+		});
+		expect(failures, "button: right of the book, level with it, not overlapping, got " + Arrays.toString(closed),
+				closed[0] >= closed[2] && closed[0] <= closed[2] + 4 && closed[1] == closed[3] && closed[5] == closed[6]);
+		clearToasts(context);
+		context.takeScreenshot("sort-button");
+
+		clickSortButton(context, LEFT_BUTTON);
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		expectRows(context, server, failures, "left-click sorts", rowsWith(BY_NAME, new String[0]));
+
+		// Right-click opens the panel; its rows change the settings and save them.
+		boolean hidden = context.computeOnClient(minecraft -> !widget(minecraft, SortPanel.class).visible);
+		expect(failures, "panel: closed to begin with", hidden);
+		clickSortButton(context, RIGHT_BUTTON);
+		boolean shown = context.computeOnClient(minecraft -> widget(minecraft, SortPanel.class).visible);
+		expect(failures, "panel: right-click opens it", shown);
+		boolean clear = context.computeOnClient(minecraft -> {
+			SortPanel panel = widget(minecraft, SortPanel.class);
+			return panel.getX() >= (minecraft.screen.width + 176) / 2 && panel.getRight() <= minecraft.screen.width;
+		});
+		expect(failures, "panel: beside the window, on screen", clear);
+		clearToasts(context);
+		context.takeScreenshot("sort-panel");
+
+		// A heading isn't a choice: nothing changes and nothing sorts.
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		String[] messy = rowsOf(context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory())));
+		clickPanelRow(context, 0);
+		clickPanelRow(context, 4);
+		context.waitTicks(4);
+		expectRows(context, server, failures, "panel: clicking a heading does nothing", messy);
+
+		// A choice sorts by itself, with no click on the button.
+		clickPanelRow(context, SortPanel.row(SortConfig.Metric.QUANTITY));
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		expectRows(context, server, failures, "panel: choosing an order sorts", rowsWith(BY_QUANTITY, new String[0]));
+		clickPanelRow(context, SortPanel.row(SortConfig.Preset.BUILDER));
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		expectRows(context, server, failures, "panel: choosing a preset sorts", rowsWith(new String[] {"apple:3", "bow:1", "diamond_sword:1"},
+				new String[] {"iron_pickaxe:1", "iron_axe:1", "iron_shovel:1", "oak_planks:64", "stone:12", "dirt:10", "cobblestone_stairs:4", "oak_slab:2"}));
+		SortConfig chosen = context.computeOnClient(minecraft -> liveConfig().sort);
+		expect(failures, "panel: choices applied, got " + chosen.metric + " " + chosen.preset, chosen.metric == SortConfig.Metric.QUANTITY && chosen.preset == SortConfig.Preset.BUILDER);
+		JsonObject saved = savedSort();
+		expect(failures, "panel: choices saved, got " + saved, saved.get("metric").getAsString().equals("quantity") && saved.get("preset").getAsString().equals("builder"));
+		clearToasts(context);
+		context.takeScreenshot("sort-panel-chosen");
+
+		// Choosing again while a slow sort is running: the newest choice wins.
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		context.runOnClient(minecraft -> liveConfig().sort.movesPerTick = 1);
+		clickPanelRow(context, SortPanel.row(SortConfig.Metric.NAME));
+		boolean going = context.computeOnClient(minecraft -> InventorySorter.isRunning());
+		expect(failures, "panel: first choice still sorting", going);
+		clickPanelRow(context, SortPanel.row(SortConfig.Preset.COMBAT));
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		expectRows(context, server, failures, "panel: a choice during a sort wins", rowsWith(COMBAT_REST, COMBAT_PICKED));
+		context.runOnClient(minecraft -> liveConfig().sort.movesPerTick = 8);
+		clickSortButton(context, RIGHT_BUTTON);
+		boolean closedAgain = context.computeOnClient(minecraft -> !widget(minecraft, SortPanel.class).visible);
+		expect(failures, "panel: right-click closes it", closedAgain);
+
+		// Opening the recipe book moves the button with it, and closes the panel.
+		clickSortButton(context, RIGHT_BUTTON);
+		int[] bookAt = context.computeOnClient(minecraft -> {
+			ImageButton book = widget(minecraft, ImageButton.class);
+			return new int[] {book.getX() + 10, book.getY() + 9};
+		});
+		clickAt(context, bookAt[0], bookAt[1], LEFT_BUTTON);
+		context.waitTicks(3);
+		int[] open = context.computeOnClient(minecraft -> {
+			SortButton sort = widget(minecraft, SortButton.class);
+			ImageButton book = widget(minecraft, ImageButton.class);
+			return new int[] {sort.getX(), sort.getY(), book.getRight(), book.getY(), widget(minecraft, SortPanel.class).visible ? 1 : 0};
+		});
+		expect(failures, "button: moved with the open book, got " + Arrays.toString(open) + " from " + Arrays.toString(closed),
+				open[0] > closed[0] && open[0] >= open[2] && open[0] <= open[2] + 4 && open[1] == open[3]);
+		expect(failures, "panel: closed by the book", open[4] == 0);
+		context.takeScreenshot("sort-button-book-open");
+		clickAt(context, bookAt[0] + (open[2] - closed[2]), bookAt[1], LEFT_BUTTON);
+		context.waitTicks(3);
+		int back = context.computeOnClient(minecraft -> widget(minecraft, SortButton.class).getX());
+		expect(failures, "button: back when the book closes, got " + back + " want " + closed[0], back == closed[0]);
+		context.setScreen(() -> null);
+		context.waitTicks(2);
+
+		// Turned off in the config.
+		context.runOnClient(minecraft -> liveConfig().sort.showButton = false);
+		openInventory(context);
+		boolean none = context.computeOnClient(minecraft -> widget(minecraft, SortButton.class) == null);
+		expect(failures, "button: off in the config", none);
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> liveConfig().sort.showButton = true);
+		context.waitTicks(2);
+	}
+
+	/** On bar 2 the sort leaves bar 1 alone, and bar 2 comes back with its new items. */
+	private static void sortOnBar(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		setSort(context, SortConfig.Metric.NAME, SortConfig.Preset.COMBAT);
+		context.runOnClient(minecraft -> {
+			liveConfig().hotbars.count = 2;
+			minecraft.player.getInventory().setSelectedSlot(0);
+		});
+		context.getInput().pressKey(ClientHooks.CYCLE_HOTBAR);
+		context.waitTicks(4);
+		sortNow(context);
+		int active = context.computeOnClient(minecraft -> liveConfig().hotbars.active(HotbarSwitcher.worldKey(minecraft)));
+		expect(failures, "on bar 2: still bar 2 afterwards, got " + active, active == 1);
+		String[] onBar = context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory()));
+		String[] hotbarWant = {"bow:1", "diamond_sword:1", "iron_axe:1", "iron_pickaxe:1", "iron_shovel:1", "air:0", "air:0", "air:0", "air:0"};
+		expect(failures, "on bar 2: the hotbar is the sorted bar, got " + String.join(" ", onBar), Arrays.equals(hotbarWant, Arrays.copyOf(onBar, 9)));
+		context.getInput().pressKey(ClientHooks.HOTBAR_DOWN);
+		context.waitTicks(4);
+		expectRows(context, server, failures, "on bar 2: back on bar 1", rowsWith(COMBAT_REST, COMBAT_PICKED));
+		expectFixed(context, server, failures, "on bar 2: back on bar 1");
+		context.runOnClient(minecraft -> liveConfig().hotbars.count = 1);
+	}
+
+	/** Slowed right down, so a sort is still going when the screen closes or a chest opens. */
+	private static void sortInterrupted(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		// Closing the screen doesn't stop it.
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		setSort(context, SortConfig.Metric.NAME, SortConfig.Preset.NONE);
+		context.runOnClient(minecraft -> liveConfig().sort.movesPerTick = 1);
+		openInventory(context);
+		context.runOnClient(minecraft -> {
+			InventorySorter.start(minecraft, liveConfig());
+			minecraft.player.closeContainer();
+		});
+		boolean stillGoing = context.computeOnClient(minecraft -> InventorySorter.isRunning());
+		expect(failures, "screen closed: sort was still going", stillGoing);
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		expectRows(context, server, failures, "screen closed mid-sort: finished", rowsWith(BY_NAME, new String[0]));
+
+		// A chest opening stops it between moves, with nothing lost, and bar 1 in the hotbar as saved.
+		fillSort(context, server, SORT_ITEMS, SORT_FIXED);
+		context.runOnClient(minecraft -> liveConfig().hotbars.count = 2);
+		context.getInput().pressKey(ClientHooks.CYCLE_HOTBAR);
+		context.waitTicks(4);
+		BlockPos chest = context.computeOnClient(minecraft -> minecraft.player.blockPosition()).offset(0, 0, 2);
+		server.runCommand(place(chest, "@ chest"));
+		server.runCommand(place(chest, "@0,1,0 air"));
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> {
+			InventorySorter.start(minecraft, liveConfig());
+			minecraft.gameMode.useItemOn(minecraft.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(chest), Direction.UP, chest, false));
+		});
+		context.waitFor(minecraft -> minecraft.player.containerMenu != minecraft.player.inventoryMenu);
+		context.waitFor(minecraft -> !InventorySorter.isRunning());
+		context.waitTicks(4);
+		String[] rows = rowsOf(context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory())));
+		expect(failures, "chest opened mid-sort: it stopped early, got " + String.join(" ", rows), !Arrays.equals(rows, rowsWith(BY_NAME, new String[0])));
+		int active = context.computeOnClient(minecraft -> liveConfig().hotbars.active(HotbarSwitcher.worldKey(minecraft)));
+		expect(failures, "chest opened mid-sort: saved as bar 1, got " + active, active == 0);
+		expectFixed(context, server, failures, "chest opened mid-sort");
+		int total = server.computeOnServer(minecraftServer -> {
+			Inventory inventory = minecraftServer.getPlayerList().getPlayers().get(0).getInventory();
+			int sum = 0;
+			for (int i = 9; i < 36; i++) {
+				sum += inventory.getItem(i).getCount();
+			}
+			return sum;
+		});
+		expect(failures, "chest opened mid-sort: every item still there, got " + total, total == 12 + 1 + 10 + 4 + 64 + 3 + 1 + 1 + 1 + 1 + 2);
+		context.runOnClient(minecraft -> minecraft.player.closeContainer());
+		context.waitFor(minecraft -> minecraft.player.containerMenu == minecraft.player.inventoryMenu);
+		context.runOnClient(minecraft -> liveConfig().sort.movesPerTick = 8);
+		sortNow(context);
+		expectRows(context, server, failures, "chest closed: a new sort finishes the job", rowsWith(BY_NAME, new String[0]));
+		server.runCommand(place(chest, "@ air"));
+		context.runOnClient(minecraft -> liveConfig().hotbars.count = 1);
+	}
+
+	/** Over a real connection: an inventory with every slot taken, then the usual mess. */
+	private static void sortOnDedicatedServer(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		int mark = checks;
+		String[] ids = {"tnt", "stone", "sand", "glass", "dirt", "cobblestone", "bricks", "apple", "bread", "carrot", "potato", "beef", "stick", "coal",
+				"flint", "feather", "paper", "leather", "string", "bone", "egg", "snowball", "clay_ball", "brick", "gravel", "obsidian", "torch"};
+		String[][] full = new String[ids.length][];
+		for (int i = 0; i < ids.length; i++) {
+			full[i] = new String[] {"inventory." + i, ids[i] + " 2"};
+		}
+		fillSort(context, server, full, SORT_FIXED);
+		context.runOnClient(minecraft -> {
+			liveConfig().sort.movesPerTick = 8;
+			liveConfig().hotbars.count = 1;
+		});
+		setSort(context, SortConfig.Metric.TYPE, SortConfig.Preset.NONE);
+		sortNow(context);
+		String[] rows = rowsOf(server.computeOnServer(IndicatorBarsClientGameTest::serverInventory));
+		Set<String> want = new HashSet<>();
+		for (String id : ids) {
+			want.add(id + ":2");
+		}
+		expect(failures, "server, full inventory: everything still there, got " + String.join(" ", rows), want.equals(new HashSet<>(Arrays.asList(rows))));
+		expectFixed(context, server, failures, "server, full inventory");
+		int clicks = context.computeOnClient(minecraft -> InventorySorter.clicks());
+		expect(failures, "server, full inventory: at most 3 clicks a swap, got " + clicks, clicks > 0 && clicks <= 3 * 26);
+		sortNow(context);
+		int again = context.computeOnClient(minecraft -> InventorySorter.clicks());
+		expect(failures, "server, full inventory: sorting again sends nothing, got " + again, again == 0);
+
+		sortCase(context, server, failures, "server: combat", SortConfig.Metric.NAME, SortConfig.Preset.COMBAT, rowsWith(COMBAT_REST, COMBAT_PICKED));
+		setSort(context, SortConfig.Metric.TYPE, SortConfig.Preset.NONE);
+		sortChecks += checks - mark;
+	}
+
+	private static JsonObject savedSort() {
+		Path path = FabricLoader.getInstance().getConfigDir().resolve(IndicatorBars.MOD_ID + ".json");
+		try {
+			return JsonParser.parseString(Files.readString(path)).getAsJsonObject().getAsJsonObject("sort");
+		} catch (IOException e) {
+			throw new AssertionError("Could not read " + path, e);
+		}
+	}
+
+	/** Each bar's items by bar: slot i holds i + 1. Bar 0 has slot 8 empty, bar 1 slots 7 and 8. */
+	private static final String[] BAR_ITEMS = {"stone", "dirt", "oak_planks", "cobblestone"};
+
+	private static String barCell(int bar, int slot) {
+		boolean empty = slot == 8 && bar <= 1 || slot == 7 && bar == 1;
+		return empty ? "air:0" : BAR_ITEMS[bar] + ":" + (slot + 1);
+	}
+
+	/** What must be in the 36 inventory slots with {@code active} in the hotbar: bar 0 in its row, the rest at home. */
+	private static String[] barLayout(int active) {
+		String[] layout = new String[36];
+		for (int slot = 0; slot < 9; slot++) {
+			layout[slot] = barCell(active, slot);
+			for (int bar = 1; bar < 4; bar++) {
+				layout[HotbarSwitcher.rowStart(bar) + slot] = barCell(bar == active ? 0 : bar, slot);
+			}
+		}
+		return layout;
+	}
+
+	private static void fillBars(ClientGameTestContext context, TestServerContext server) {
+		server.runCommand("clear @a");
+		String[] home = barLayout(0);
+		for (int i = 0; i < 36; i++) {
+			if (!home[i].equals("air:0")) {
+				String[] cell = home[i].split(":");
+				// Inventory index 9 is the command's inventory.0.
+				String slot = i < 9 ? "hotbar." + i : "inventory." + (i - 9);
+				server.runCommand("item replace entity @a " + slot + " with minecraft:" + cell[0] + " " + cell[1]);
+			}
+		}
+		context.waitTicks(10);
+	}
+
+	private static String[] readInventory(Inventory inventory) {
+		String[] items = new String[36];
+		for (int i = 0; i < 36; i++) {
+			ItemStack stack = inventory.getItem(i);
+			items[i] = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + ":" + stack.getCount();
+		}
+		return items;
+	}
+
+	private static String[] serverInventory(MinecraftServer minecraftServer) {
+		return readInventory(minecraftServer.getPlayerList().getPlayers().get(0).getInventory());
+	}
+
+	/** The bar in the hotbar and all the rows, on the client and on the server, and the remembered bar. */
+	private static void expectBar(ClientGameTestContext context, TestServerContext server, List<String> failures, String what, int active) {
+		context.waitTicks(4);
+		String[] want = barLayout(active);
+		String[] client = context.computeOnClient(minecraft -> readInventory(minecraft.player.getInventory()));
+		String[] onServer = server.computeOnServer(IndicatorBarsClientGameTest::serverInventory);
+		int remembered = context.computeOnClient(minecraft -> liveConfig().hotbars.active(HotbarSwitcher.worldKey(minecraft)));
+		expect(failures, what + ": client inventory for bar " + active + ", got " + String.join(" ", client), Arrays.equals(want, client));
+		expect(failures, what + ": server inventory for bar " + active + ", got " + String.join(" ", onServer), Arrays.equals(want, onServer));
+		expect(failures, what + ": remembers bar " + active + ", got " + remembered, remembered == active);
+	}
+
+	private static void pressBar(ClientGameTestContext context, TestServerContext server, List<String> failures, String what, KeyMapping key, int active) {
+		context.getInput().pressKey(key);
+		expectBar(context, server, failures, what, active);
+	}
+
+	/** The real config, the one the keys use. */
+	private static IBConfig liveConfig() {
+		try {
+			Field field = ClientHooks.class.getDeclaredField("config");
+			field.setAccessible(true);
+			return (IBConfig) field.get(null);
+		} catch (ReflectiveOperationException e) {
+			throw new AssertionError("Could not reach the config", e);
+		}
+	}
+
+	/** The hotbars block of the config file, and the sums behind the bars. */
+	private static void hotbarConfig(List<String> failures) {
+		try {
+			Path path = Files.createTempDirectory("indicatorbars-test").resolve("config.json");
+			HotbarsConfig fresh = IBConfig.load(path).hotbars;
+			expect(failures, "hotbar config: one bar by default", fresh.count == 1 && fresh.showIndicator && fresh.active.isEmpty());
+			Files.writeString(path, "{\"hotbars\":{\"count\":0}}");
+			expect(failures, "hotbar config: count 0 becomes 1", IBConfig.load(path).hotbars.count == 1);
+			Files.writeString(path, "{\"hotbars\":{\"count\":9,\"indicatorAnchor\":\"nowhere\",\"active\":null}}");
+			HotbarsConfig high = IBConfig.load(path).hotbars;
+			expect(failures, "hotbar config: count 9 becomes 4", high.count == HotbarsConfig.MAX_COUNT);
+			expect(failures, "hotbar config: bad values get defaults", high.indicatorAnchor == fresh.indicatorAnchor && high.active != null);
+			Files.writeString(path, "{\"hotbars\":{\"active\":{\"a\":2,\"b\":99,\"c\":-1}}}");
+			HotbarsConfig saved = IBConfig.load(path).hotbars;
+			expect(failures, "hotbar config: a bar is kept per world, out of range is bar 0",
+					saved.active("a") == 2 && saved.active("b") == 0 && saved.active("c") == 0 && saved.active("new") == 0);
+			Files.writeString(path, "{\"crops\":{}}");
+			expect(failures, "hotbar config: an older file gains hotbars", IBConfig.load(path).hotbars != null);
+			expect(failures, "hotbar rows: bottom row first", HotbarSwitcher.rowStart(1) == 27 && HotbarSwitcher.rowStart(2) == 18 && HotbarSwitcher.rowStart(3) == 9);
+			expect(failures, "hotbar step: wraps both ways", HotbarSwitcher.step(2, 3, 1) == 0 && HotbarSwitcher.step(0, 3, -1) == 2);
+			expect(failures, "hotbar step: a bar past a lowered count comes back", HotbarSwitcher.step(3, 1, 1) == 0 && HotbarSwitcher.step(3, 2, -1) == 0);
+		} catch (IOException e) {
+			throw new AssertionError("Could not test the config", e);
+		}
+	}
+
+	/** White pixels where the indicator goes, left of the hotbar, at the screenshot's GUI scale of 2. */
+	private static int indicatorPixels(Path screenshot) {
+		BufferedImage image;
+		try {
+			image = ImageIO.read(screenshot.toFile());
+		} catch (IOException e) {
+			throw new AssertionError("Could not read " + screenshot, e);
+		}
+		int count = 0;
+		for (int y = 436; y < image.getHeight(); y++) {
+			for (int x = 150; x < 244; x++) {
+				if (near(image.getRGB(x, y), 0xFFFFFF, 40)) {
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+
+	private static void hotbars(ClientGameTestContext context, TestServerContext server, List<String> failures) {
+		HotbarsConfig config = context.computeOnClient(minecraft -> liveConfig().hotbars);
+		server.runCommand("kill @e[type=!player]");
+		context.runOnClient(minecraft -> {
+			config.active.clear();
+			config.count = 1;
+			minecraft.player.getInventory().setSelectedSlot(0);
+		});
+		server.runCommand("gamemode survival @a");
+		fillBars(context, server);
+
+		// One bar: no key moves anything, and no indicator.
+		pressBar(context, server, failures, "one bar, cycle", ClientHooks.CYCLE_HOTBAR, 0);
+		pressBar(context, server, failures, "one bar, up", ClientHooks.HOTBAR_UP, 0);
+		pressBar(context, server, failures, "one bar, down", ClientHooks.HOTBAR_DOWN, 0);
+		int none = indicatorPixels(context.takeScreenshot("hotbar-one"));
+		expect(failures, "indicator: not with one bar, got " + none, none == 0);
+
+		// The keys, in survival with 3 bars. Bar 3 stays in its row, untouched.
+		context.runOnClient(minecraft -> config.count = 3);
+		pressBar(context, server, failures, "cycle to 2", ClientHooks.CYCLE_HOTBAR, 1);
+		expect(failures, "switching: no message, the indicator says it", !Language.getInstance().has("indicatorbars.hotbars.active"));
+		int second = indicatorPixels(context.takeScreenshot("hotbar-2-of-3"));
+		expect(failures, "indicator: shows with 3 bars, got " + second, second > 0);
+		pressBar(context, server, failures, "cycle to 3", ClientHooks.CYCLE_HOTBAR, 2);
+		int third = indicatorPixels(context.takeScreenshot("hotbar-3-of-3"));
+		expect(failures, "indicator: 3/3 isn't drawn as 2/3, got " + third + " and " + second, third != second);
+		pressBar(context, server, failures, "cycle wraps to 1", ClientHooks.CYCLE_HOTBAR, 0);
+		pressBar(context, server, failures, "up to 2", ClientHooks.HOTBAR_UP, 1);
+		pressBar(context, server, failures, "up to 3", ClientHooks.HOTBAR_UP, 2);
+		pressBar(context, server, failures, "up wraps to 1", ClientHooks.HOTBAR_UP, 0);
+		pressBar(context, server, failures, "down wraps to 3", ClientHooks.HOTBAR_DOWN, 2);
+		pressBar(context, server, failures, "down to 2", ClientHooks.HOTBAR_DOWN, 1);
+		pressBar(context, server, failures, "down to 1", ClientHooks.HOTBAR_DOWN, 0);
+
+		// Slots empty on both sides send nothing: bar 1 is empty in slots 7 and 8, bar 0 in slot 8.
+		int out = context.computeOnClient(minecraft -> HotbarSwitcher.swapRow(minecraft, 1));
+		int back = context.computeOnClient(minecraft -> HotbarSwitcher.swapRow(minecraft, 1));
+		expect(failures, "swaps: both-empty slots skipped, got " + out + " and " + back, out == 8 && back == 8);
+		expectBar(context, server, failures, "two swaps cancel out", 0);
+
+		// Several switches in one tick land in the right place.
+		context.runOnClient(minecraft -> {
+			HotbarSwitcher.change(minecraft, liveConfig(), 1);
+			HotbarSwitcher.change(minecraft, liveConfig(), 1);
+		});
+		expectBar(context, server, failures, "two switches in one tick", 2);
+		context.runOnClient(minecraft -> HotbarSwitcher.change(minecraft, liveConfig(), 1));
+		expectBar(context, server, failures, "and back", 0);
+
+		// The held slot doesn't move, whichever bar comes in.
+		context.runOnClient(minecraft -> minecraft.player.getInventory().setSelectedSlot(4));
+		pressBar(context, server, failures, "selected slot 4, to bar 2", ClientHooks.CYCLE_HOTBAR, 1);
+		int selected = context.computeOnClient(minecraft -> minecraft.player.getInventory().getSelectedSlot());
+		String held = context.computeOnClient(minecraft -> BuiltInRegistries.ITEM.getKey(minecraft.player.getMainHandItem().getItem()).getPath());
+		expect(failures, "selected slot kept, holding bar 2's item, got " + selected + " " + held, selected == 4 && held.equals("dirt"));
+		pressBar(context, server, failures, "selected slot 4, to bar 3", ClientHooks.CYCLE_HOTBAR, 2);
+		pressBar(context, server, failures, "selected slot 4, home", ClientHooks.CYCLE_HOTBAR, 0);
+		context.runOnClient(minecraft -> minecraft.player.getInventory().setSelectedSlot(0));
+
+		// Creative, all 4 bars.
+		server.runCommand("gamemode creative @a");
+		context.runOnClient(minecraft -> config.count = 4);
+		context.waitTicks(5);
+		pressBar(context, server, failures, "creative: cycle to 2", ClientHooks.CYCLE_HOTBAR, 1);
+		pressBar(context, server, failures, "creative: cycle to 3", ClientHooks.CYCLE_HOTBAR, 2);
+		pressBar(context, server, failures, "creative: cycle to 4", ClientHooks.CYCLE_HOTBAR, 3);
+		pressBar(context, server, failures, "creative: cycle wraps to 1", ClientHooks.CYCLE_HOTBAR, 0);
+		pressBar(context, server, failures, "creative: down wraps to 4", ClientHooks.HOTBAR_DOWN, 3);
+		pressBar(context, server, failures, "creative: up wraps to 1", ClientHooks.HOTBAR_UP, 0);
+		server.runCommand("gamemode survival @a");
+
+		// Lowering the count with a bar out: the next press brings the hotbar home.
+		context.runOnClient(minecraft -> config.count = 3);
+		pressBar(context, server, failures, "before lowering", ClientHooks.HOTBAR_DOWN, 2);
+		context.runOnClient(minecraft -> config.count = 1);
+		pressBar(context, server, failures, "count lowered to 1, a press goes home", ClientHooks.CYCLE_HOTBAR, 0);
+		context.runOnClient(minecraft -> config.count = 3);
+
+		// Nothing moves while a chest is open, by key or by a direct call.
+		BlockPos chest = context.computeOnClient(minecraft -> minecraft.player.blockPosition()).offset(0, 0, 2);
+		server.runCommand(place(chest, "@ chest"));
+		server.runCommand(place(chest, "@0,1,0 air"));
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> minecraft.gameMode.useItemOn(minecraft.player, InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(chest), Direction.UP, chest, false)));
+		context.waitFor(minecraft -> minecraft.player.containerMenu != minecraft.player.inventoryMenu);
+		pressBar(context, server, failures, "chest open, key", ClientHooks.CYCLE_HOTBAR, 0);
+		context.runOnClient(minecraft -> HotbarSwitcher.change(minecraft, liveConfig(), 1));
+		expectBar(context, server, failures, "chest open, direct call", 0);
+		context.runOnClient(minecraft -> minecraft.player.closeContainer());
+		context.waitFor(minecraft -> minecraft.player.containerMenu == minecraft.player.inventoryMenu);
+		server.runCommand(place(chest, "@ air"));
+		pressBar(context, server, failures, "chest closed, the key works again", ClientHooks.CYCLE_HOTBAR, 1);
+
+		// Indicator off.
+		context.runOnClient(minecraft -> config.showIndicator = false);
+		context.waitTicks(2);
+		int off = indicatorPixels(context.takeScreenshot("hotbar-indicator-off"));
+		expect(failures, "indicator: off in the config, got " + off, off == 0);
+		context.runOnClient(minecraft -> config.showIndicator = true);
+
+		pressBar(context, server, failures, "leaving on bar 3", ClientHooks.CYCLE_HOTBAR, 2);
+		expect(failures, "bar saved to the file", savedActiveBars() == 1);
+	}
+
+	/** Left on bar 3: it must still know that, and each bar must go back where it came from. */
+	private static void hotbarsAfterRejoin(ClientGameTestContext context, TestWorldSave save, List<String> failures) {
+		try (TestSingleplayerContext world = save.open()) {
+			world.getClientWorld().waitForChunksRender();
+			TestServerContext server = world.getServer();
+			expectBar(context, server, failures, "rejoin: still bar 3", 2);
+			pressBar(context, server, failures, "rejoin: cycle home", ClientHooks.CYCLE_HOTBAR, 0);
+			pressBar(context, server, failures, "rejoin: up to 2", ClientHooks.HOTBAR_UP, 1);
+			pressBar(context, server, failures, "rejoin: back home", ClientHooks.HOTBAR_DOWN, 0);
+		}
+	}
+
+	/** Over a real connection to a real server, as a plain survival player. */
+	private static void hotbarsOnDedicatedServer(ClientGameTestContext context, List<String> failures, List<String> sortFailures, List<String> craftFailures) {
+		HotbarsConfig config = context.computeOnClient(minecraft -> liveConfig().hotbars);
+		try (TestDedicatedServerContext server = context.worldBuilder().createServer();
+				var connection = server.connect()) {
+			connection.getClientWorld().waitForChunksRender();
+			server.runCommand("gamemode survival @a");
+			fillBars(context, server);
+			context.runOnClient(minecraft -> {
+				config.count = 3;
+				minecraft.player.getInventory().setSelectedSlot(0);
+			});
+			String key = context.computeOnClient(HotbarSwitcher::worldKey);
+			expect(failures, "server: its own remembered bar, got " + key, key.startsWith("server:") && config.active(key) == 0);
+			pressBar(context, server, failures, "server: cycle to 2", ClientHooks.CYCLE_HOTBAR, 1);
+			pressBar(context, server, failures, "server: up to 3", ClientHooks.HOTBAR_UP, 2);
+			pressBar(context, server, failures, "server: cycle wraps to 1", ClientHooks.CYCLE_HOTBAR, 0);
+			pressBar(context, server, failures, "server: down wraps to 3", ClientHooks.HOTBAR_DOWN, 2);
+			pressBar(context, server, failures, "server: down to 2", ClientHooks.HOTBAR_DOWN, 1);
+			pressBar(context, server, failures, "server: down home", ClientHooks.HOTBAR_DOWN, 0);
+			sortOnDedicatedServer(context, server, sortFailures);
+			craftOnDedicatedServer(context, server, craftFailures);
+		}
+		context.runOnClient(minecraft -> {
+			config.count = 1;
+			config.active.clear();
+			liveConfig().save();
+		});
+	}
+
+	private static int savedActiveBars() {
+		Path path = FabricLoader.getInstance().getConfigDir().resolve(IndicatorBars.MOD_ID + ".json");
+		try {
+			return JsonParser.parseString(Files.readString(path)).getAsJsonObject().getAsJsonObject("hotbars").getAsJsonObject("active").size();
+		} catch (IOException e) {
+			throw new AssertionError("Could not read " + path, e);
 		}
 	}
 

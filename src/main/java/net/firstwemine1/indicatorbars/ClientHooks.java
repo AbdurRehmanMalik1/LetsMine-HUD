@@ -32,6 +32,17 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.firstwemine1.indicatorbars.hotbar.HotbarSwitcher;
+import net.firstwemine1.indicatorbars.render.HotbarIndicatorRenderer;
+import net.firstwemine1.indicatorbars.render.QuickCraftButton;
+import net.firstwemine1.indicatorbars.render.SortButton;
+import net.firstwemine1.indicatorbars.sort.InventorySorter;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
+import net.minecraft.world.inventory.AbstractCraftingMenu;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import java.util.List;
 
 /**
  * Everything the loader-specific code calls. Each loader's entrypoint and mixins only turn its own
@@ -43,6 +54,9 @@ public final class ClientHooks {
 	public static final KeyMapping TOGGLE_BARS = new KeyMapping("key.indicatorbars.toggle_bars", InputConstants.KEY_H, KEY_CATEGORY);
 	public static final KeyMapping TOGGLE_DURABILITY = new KeyMapping("key.indicatorbars.toggle_durability", InputConstants.KEY_J, KEY_CATEGORY);
 	public static final KeyMapping TOGGLE_CROPS = new KeyMapping("key.indicatorbars.toggle_crops", InputConstants.KEY_K, KEY_CATEGORY);
+	public static final KeyMapping CYCLE_HOTBAR = new KeyMapping("key.indicatorbars.cycle_hotbar", InputConstants.KEY_G, KEY_CATEGORY);
+	public static final KeyMapping HOTBAR_UP = new KeyMapping("key.indicatorbars.hotbar_up", InputConstants.KEY_UP, KEY_CATEGORY);
+	public static final KeyMapping HOTBAR_DOWN = new KeyMapping("key.indicatorbars.hotbar_down", InputConstants.KEY_DOWN, KEY_CATEGORY);
 
 	private static final TargetTracker TARGET = new TargetTracker();
 	private static final EquipmentTracker EQUIPMENT = new EquipmentTracker();
@@ -82,10 +96,20 @@ public final class ClientHooks {
 						config.crops.showBars ? "indicatorbars.crops.on" : "indicatorbars.crops.off"), true);
 			}
 		}
+		while (CYCLE_HOTBAR.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, 1);
+		}
+		while (HOTBAR_UP.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, 1);
+		}
+		while (HOTBAR_DOWN.consumeClick()) {
+			HotbarSwitcher.change(minecraft, config, -1);
+		}
 		if (minecraft.level == null) {
 			reset();
 			return;
 		}
+		InventorySorter.tick(minecraft, config);
 		TARGET.tick(minecraft, config.health);
 		EQUIPMENT.tick(minecraft, config.durability);
 		CROPS.tick(minecraft, config.crops);
@@ -154,8 +178,37 @@ public final class ClientHooks {
 		SlotCounterRenderer.render(graphics, font, stack, x, y, config.durability);
 	}
 
+	/** Which hotbar is in use. */
+	public static void renderHotbarIndicator(GuiGraphics graphics, DeltaTracker deltaTracker) {
+		HotbarIndicatorRenderer.render(graphics, config.hotbars);
+	}
+
+	/**
+	 * A screen was built. The player's inventory gets the sort button, and any crafting screen the
+	 * quick-craft button. Returns what must run each frame to keep them in place, or null if nothing was added.
+	 */
+	public static Runnable attachScreenButtons(Screen screen, List<AbstractWidget> widgets) {
+		if (!(screen instanceof AbstractRecipeBookScreen<?> book) || !(book.getMenu() instanceof AbstractCraftingMenu menu)) {
+			return null;
+		}
+		SortButton sort = screen instanceof InventoryScreen inventory && config.sort.showButton ? SortButton.attach(inventory, widgets, config) : null;
+		QuickCraftButton craft = config.craft.showButton ? QuickCraftButton.attach(book, widgets, menu) : null;
+		if (sort == null && craft == null) {
+			return null;
+		}
+		return () -> {
+			if (sort != null) {
+				sort.follow();
+			}
+			if (craft != null) {
+				craft.follow();
+			}
+		};
+	}
+
 	/** Disconnected or left the world: forget the target, the equipment and the crops. */
 	public static void reset() {
+		InventorySorter.reset();
 		TARGET.reset();
 		EQUIPMENT.reset();
 		CROPS.reset();

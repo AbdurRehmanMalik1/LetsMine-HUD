@@ -11,6 +11,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 
 /**
  * Fabric entrypoint. The floating mob bars hook in through {@code LivingEntityRendererMixin}; crops
@@ -24,12 +26,22 @@ public class IndicatorBarsClient implements ClientModInitializer {
 		KeyBindingHelper.registerKeyBinding(ClientHooks.TOGGLE_BARS);
 		KeyBindingHelper.registerKeyBinding(ClientHooks.TOGGLE_DURABILITY);
 		KeyBindingHelper.registerKeyBinding(ClientHooks.TOGGLE_CROPS);
+		KeyBindingHelper.registerKeyBinding(ClientHooks.CYCLE_HOTBAR);
+		KeyBindingHelper.registerKeyBinding(ClientHooks.HOTBAR_UP);
+		KeyBindingHelper.registerKeyBinding(ClientHooks.HOTBAR_DOWN);
 		ClientTickEvents.END_CLIENT_TICK.register(ClientHooks::tick);
 		WorldRenderEvents.BEFORE_TRANSLUCENT.register(context -> ClientHooks.submitCropBars(
 				context.matrices(), context.commandQueue(), context.worldState().cameraRenderState));
 		HudElementRegistry.addLast(IndicatorBars.id("target_panel"), ClientHooks::renderHud);
 		HudElementRegistry.addLast(IndicatorBars.id("durability_hud"), ClientHooks::renderEquipmentHud);
+		HudElementRegistry.addLast(IndicatorBars.id("hotbar_indicator"), ClientHooks::renderHotbarIndicator);
 		DrawItemStackOverlayCallback.EVENT.register(ClientHooks::renderSlot);
+		ScreenEvents.AFTER_INIT.register((minecraft, screen, width, height) -> {
+			Runnable follow = ClientHooks.attachScreenButtons(screen, Screens.getButtons(screen));
+			if (follow != null) {
+				ScreenEvents.beforeRender(screen).register((current, graphics, mouseX, mouseY, partialTick) -> follow.run());
+			}
+		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ClientHooks.reset());
 	}
 }
